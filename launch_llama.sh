@@ -1,0 +1,13 @@
+llama-server \
+    -m /data/models/hf/Qwen3.6-35B-A3B-UD-Q6_K_XL.gguf \
+    --gpu-layers 40 \
+    --ctx-size 262144 \
+    --cpu-moe \
+    --temp 0.6 \
+    --top-k 20 \
+    --top-p 0.95 \
+    --min-p 0.05 \
+    --presence-penalty 0.5 \
+    --chat-template-kwargs '{"preserve_thinking": true}' \
+    --host 127.0.0.1 \
+    --port 8033
