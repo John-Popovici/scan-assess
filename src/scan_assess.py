@@ -92,7 +92,10 @@ def run_modules(output_dir: Path) -> tuple[list[Path], list[str], list[str]]:
         try:
             runner_instance = runner_class()
             module_output_dir.mkdir(parents=True, exist_ok=True)
-            module_files = runner_instance.run(module_output_dir, module_dir)
+            success, module_files = runner_instance.run(module_output_dir, module_dir)
+            if not success:
+                errors.append(f"{module_dir.name}: Module returned failure.")
+                continue
             generated_json_files.extend(
                 [
                     file
@@ -194,6 +197,12 @@ def main() -> None:
     output_dir, report_dir = create_run_dirs(ts) # Create output and report directories
 
     generated_json_files, runner_info, runner_errors = run_modules(output_dir)
+    if runner_errors:
+        print("\nModule Runner Errors:")
+        for error in runner_errors:
+            print(f"- {error}")
+        print("Stopping execution due to module runner errors.")
+        return
     payload_files = collect_json_payload(generated_json_files, output_dir)
     report_body = analyze_with_llm(payload_files)
     report_path = save_report(ts, report_dir, report_body, payload_files, runner_info, runner_errors)

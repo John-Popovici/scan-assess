@@ -9,7 +9,7 @@ from src.runners.base_runner import BaseRunner
 class Runner(BaseRunner):
     """Example runner that demonstrates the BaseRunner interface."""
 
-    def run(self, output_dir: Path, module_dir: Path) -> list[Path]:
+    def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         """Example implementation: generate a simple status JSON file."""
 
         # Generate example data
@@ -26,4 +26,4 @@ class Runner(BaseRunner):
         output_path = output_dir / "example_output.json"
         output_path.write_text(json.dumps(example_data, indent=2), encoding="utf-8")
 
-        return [output_path]
+        return True, [output_path]

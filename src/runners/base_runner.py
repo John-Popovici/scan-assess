@@ -13,7 +13,7 @@ class BaseRunner(ABC):
     """
 
     @abstractmethod
-    def run(self, output_dir: Path, module_dir: Path) -> list[Path]:
+    def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         """
         Execute the module and generate output files.
 
@@ -22,7 +22,8 @@ class BaseRunner(ABC):
             module_dir: Directory containing the module's source code and data.
 
         Returns:
-            A list of Path objects pointing to all generated JSON files.
+            A tuple containing a boolean indicating success
+            and a list of Path objectspointing to all generated JSON files.
             Only files with .json extension should be included in the returned list.
         """
         pass
