@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from src.runners.load_modules import load_modules
+from runners.run_modules import run_modules
 
 from openai import OpenAI
 
@@ -44,40 +44,6 @@ def create_run_dirs(ts: datetime) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     return output_dir, report_dir
-
-
-def run_modules(output_dir: Path) -> tuple[list[Path], list[str], list[str]]:
-    generated_json_files: list[Path] = []
-    info: list[str] = []
-    errors: list[str] = []
-
-    # Discover modules.
-    runner_classes = load_modules(MODULES_ROOT)
-
-    # Iterate through each module
-    for runner_class, module_dir in runner_classes:
-        module_output_dir = output_dir / module_dir.name
-        module_output_dir.mkdir(parents=True, exist_ok=True)
-
-        try:
-            runner_instance = runner_class()
-            module_output_dir.mkdir(parents=True, exist_ok=True)
-            success, module_files = runner_instance.run(module_output_dir, module_dir)
-            if not success:
-                errors.append(f"{module_dir.name}: Module returned failure.")
-                continue
-            generated_json_files.extend(
-                [
-                    file
-                    for file in module_files
-                    if file.suffix.lower() == ".json" and file.exists()
-                ]
-            )
-            info.append(f"{module_dir.name}: {len(module_files)} files generated.")
-        except Exception as exc:
-            errors.append(f"{module_dir.name}: {exc}")
-
-    return sorted(set(generated_json_files)), info, errors
 
 
 def collect_json_payload(
@@ -158,7 +124,7 @@ def main() -> None:
     ts = datetime.now(UTC)
     output_dir, report_dir = create_run_dirs(ts) # Create output and report directories
 
-    generated_json_files, runner_info, runner_errors = run_modules(output_dir)
+    generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)
     if runner_errors:
         print("\nModule Runner Errors:")
         for error in runner_errors:
