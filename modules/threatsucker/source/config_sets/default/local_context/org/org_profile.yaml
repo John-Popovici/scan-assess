@@ -1,0 +1,15 @@
+org_name: Example Luxembourg NGO
+country: LU
+languages: [fr, de, en, lb]
+sector: charity
+handles_sensitive_data: true
+handles_donor_data: true
+has_public_donation_page: true
+uses_cloud_email: true
+likely_targets:
+  - phishing
+  - credential_theft
+  - invoice_fraud
+  - donation_page_impersonation
+  - malware_delivery
+technical_capacity: low

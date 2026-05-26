@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+data/normalized/**
+data/scored/**
+data/agent_context/current/**
+data/raw/*/20??/**
+data/state/**
+!data/normalized/.gitkeep
+!data/scored/.gitkeep
+!data/agent_context/current/.gitkeep

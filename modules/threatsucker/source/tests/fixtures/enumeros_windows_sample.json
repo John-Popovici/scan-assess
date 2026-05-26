@@ -1,0 +1,66 @@
+{
+  "hostname": "USER17D8",
+  "os": {
+    "platform": "windows",
+    "product_name": "Windows 11",
+    "raw_product_name": "Windows 10 Home",
+    "display_version": "21H2",
+    "build": "22000",
+    "build_number": 22000,
+    "ubr": null
+  },
+  "browsers": {
+    "chrome": null,
+    "edge": "148.0.3967.54",
+    "firefox": null,
+    "opera": null
+  },
+  "version_status": {
+    "items": [
+      {
+        "name": "os",
+        "installed": "21H2",
+        "latest": "25H2",
+        "status": "outdated",
+        "source": "Microsoft Windows 11 release information / latest GA feature version policy"
+      },
+      {
+        "name": "chrome",
+        "installed": null,
+        "latest": "148.0.7778.97",
+        "status": "not_installed_or_not_detected",
+        "source": "Google Chrome Version History API"
+      },
+      {
+        "name": "edge",
+        "installed": "148.0.3967.54",
+        "latest": "148.0.3967.54",
+        "status": "current",
+        "source": "Microsoft Edge Updates API"
+      }
+    ]
+  },
+  "network_discovery": {
+    "method": "tcp_connect",
+    "local_ip": "10.211.55.4",
+    "assumed_subnet": "10.211.55.0/24",
+    "tested_ports": [22, 53, 80, 443, 445, 3389],
+    "hosts": [
+      {
+        "ip": "10.211.55.1",
+        "open_ports": [
+          {
+            "port": 53,
+            "status": "open"
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "overall": "warnings",
+    "outdated_count": 1,
+    "unknown_count": 0,
+    "open_service_count": 1
+  }
+}

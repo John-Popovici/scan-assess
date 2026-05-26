@@ -1,0 +1,6 @@
+host,port,protocol,service,severity,source
+web-01,443,tcp,https,,
+web-01,80,tcp,http,,
+192.168.1.20,445,tcp,smb,high,safesniff
+192.168.1.10,443,tcp,https,,enumeros
+192.168.1.20,445,tcp,smb,,enumeros

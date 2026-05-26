@@ -1,0 +1,1 @@
+"""Fixture-first source adapters."""
