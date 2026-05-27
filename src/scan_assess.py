@@ -188,6 +188,8 @@ def save_report(
 ) -> Path:
     print("Writing report...")
 
+    cleaned_body = _build_body(report_body, files)
+
     report_path = report_dir / f"security_report_{ts.strftime('%Y-%m-%dT%H:%M:%SZ').replace(':', '-')}.md"
 
     header_lines = [
