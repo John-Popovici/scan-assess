@@ -38,7 +38,7 @@ USER_PROMPT = (
     "- A numbered list of up to 5 actionable items, each with a brief explanation."
     "\n\nFor each actionable item, append a citation on the next line in this exact format:\n"
     "<|source_name, \"string to search for\"|>\n"
-    "Use source_name as the input filename exactly as provided."
+    "Use source_name as the input filename with path exactly as provided."
     "The search string must be an exact substring from the source file that supports the item."
     "If no citation applies, omit the citation line for that item."
 )
