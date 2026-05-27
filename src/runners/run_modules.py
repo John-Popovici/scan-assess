@@ -92,7 +92,7 @@ def run_modules(
                 [
                     file
                     for file in module_files
-                    if file.suffix.lower() == ".json" and file.exists()
+                    if file.exists()
                 ]
             )
             info.append(f"{module_dir.name}: {len(module_files)} files generated.")

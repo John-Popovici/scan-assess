@@ -97,6 +97,19 @@ def analyze_with_llm(files: list[dict[str, str]]) -> str:
 def _build_body(report_body: str, files: list[dict[str, str]]) -> str:
     file_lookup = {item["filename"]: item["file_data"] for item in files}
 
+    def _search_variants(search: str) -> list[str]:
+        """Return candidate search strings, including unescaped variants."""
+        variants: list[str] = [search]
+
+        try:
+            unescaped = bytes(search, encoding="utf-8").decode("unicode_escape")
+            if unescaped and unescaped not in variants:
+                variants.append(unescaped)
+        except UnicodeDecodeError:
+            pass
+
+        return variants
+
     def _render_citation(source: str, search: str) -> list[str]:
         # Look up the source file content
         content = file_lookup.get(source)
@@ -105,9 +118,10 @@ def _build_body(report_body: str, files: list[dict[str, str]]) -> str:
 
         # Search for the specified string in the content
         lines = content.splitlines()
+        candidates = _search_variants(search)
         match_index = None
         for idx, line in enumerate(lines):
-            if search in line:
+            if any(candidate in line for candidate in candidates):
                 match_index = idx
                 break
         if match_index is None:
