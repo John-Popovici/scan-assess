@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from openai import OpenAI
 
-from src.module_config import load_module_runtime_config, write_module_runtime_config
 from src.runners.run_modules import run_modules
 
 
@@ -13,7 +13,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODULES_ROOT = PROJECT_ROOT / "modules"
 OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
 REPORTS_ROOT = PROJECT_ROOT / "reports"
-DEMO_DNSCAP_LOG_ROOT = MODULES_ROOT / "dnscap" / "imported_logs"
 
 MODEL = "here"
 SYSTEM_PROMPT = (
@@ -48,39 +47,6 @@ client = OpenAI(
     api_key="not-needed",
     base_url="http://localhost:8033/v1",
 )
-
-
-def configure_run_mode(*, demo: bool = False) -> list[str]:
-    """Set runner environment for the requested run path and return report notes."""
-    notes: list[str] = []
-    dnscap_module_dir = MODULES_ROOT / "dnscap"
-    threatsucker_module_dir = MODULES_ROOT / "threatsucker"
-    dnscap_config = load_module_runtime_config(dnscap_module_dir)
-    threatsucker_config = load_module_runtime_config(threatsucker_module_dir)
-
-    if demo:
-        dnscap_config["log_root"] = str(DEMO_DNSCAP_LOG_ROOT)
-        threatsucker_config["include_demo_threat_intel"] = True
-        threatsucker_config.setdefault("config_set", "default")
-        notes.append("scan-assess mode: demo")
-        notes.append(f"demo DNScap log root: {dnscap_config['log_root']}")
-        notes.append("demo ThreatSucker threat intel: enabled")
-    else:
-        threatsucker_config["include_demo_threat_intel"] = False
-        notes.append("scan-assess mode: live")
-        notes.append("demo ThreatSucker threat intel: disabled")
-
-    write_module_runtime_config(dnscap_module_dir, dnscap_config)
-    write_module_runtime_config(threatsucker_module_dir, threatsucker_config)
-    notes.append(f"DNScap import period: {dnscap_config.get('period', 'all')}")
-    if dnscap_config.get("start"):
-        notes.append(f"DNScap import start: {dnscap_config['start']}")
-    if dnscap_config.get("end"):
-        notes.append(f"DNScap import end: {dnscap_config['end']}")
-    if threatsucker_config.get("config_set"):
-        notes.append(f"ThreatSucker config set: {threatsucker_config['config_set']}")
-
-    return notes
 
 
 def create_run_dirs(ts: datetime) -> tuple[Path, Path]:
@@ -160,7 +126,7 @@ def _build_body(report_body: str, files: list[dict[str, str]]) -> str:
     for raw_line in report_body.splitlines():
         # Search for citation patterns
         line = raw_line.strip()
-        if line.startswith("<|") and line.endswith("|>"):
+        if (line.startswith("<|") or line.startswith("<")) and (line.endswith("|>") or line.endswith(">")):
             inner = line[2:-2]
             parts = inner.split(",", 1)
             if len(parts) == 2:
@@ -216,12 +182,26 @@ def save_report(
     return report_path
 
 
-def run_assessment(*, demo: bool = False) -> Path | None:
-    run_notes = configure_run_mode(demo=demo)
+def run_assessment(
+    *,
+    demo: bool = False,
+    verbose: bool = False,
+    module_overrides: dict[str, dict[str, Any]] | None = None,
+) -> Path | None:
     ts = datetime.now(UTC)
     output_dir, report_dir = create_run_dirs(ts)
 
-    generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)
+    generic_overrides = {
+        "demo": demo,
+        "verbose": verbose,
+    }
+
+    generated_json_files, runner_info, runner_errors = run_modules(
+        MODULES_ROOT,
+        output_dir,
+        module_overrides=module_overrides,
+        generic_overrides=generic_overrides,
+    )
     if runner_errors:
         print("\nModule Runner Errors:")
         for error in runner_errors:
@@ -230,7 +210,7 @@ def run_assessment(*, demo: bool = False) -> Path | None:
         return None
     payload_files = collect_json_payload(generated_json_files, output_dir)
     report_body = analyze_with_llm(payload_files)
-    report_path = save_report(ts, report_dir, report_body, payload_files, [*run_notes, *runner_info])
+    report_path = save_report(ts, report_dir, report_body, payload_files, runner_info)
 
     print(f"\nReport saved to: {report_path}")
     return report_path
