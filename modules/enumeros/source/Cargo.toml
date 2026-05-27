@@ -1,0 +1,8 @@
+[package]
+name = "enumeros"
+version = "0.1.0"
+edition = "2021"
+description = "Small Rust-based multi platform asset inventory tool for defensive security assessment."
+license = "MIT"
+
+[dependencies]

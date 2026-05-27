@@ -1,0 +1,6 @@
+{
+  "log_root": "/Users/user/codeprojects/scan-assess/modules/dnscap/imported_logs",
+  "period": "all",
+  "update_last_run_marker": false,
+  "use_last_run_marker": false
+}

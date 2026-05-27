@@ -1,0 +1,9 @@
+overall_technical_capacity: low
+common_user_groups:
+  - volunteers
+  - finance_staff
+  - programme_managers
+training_focus:
+  - phishing
+  - invoice_fraud
+  - cloud_login_safety

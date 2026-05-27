@@ -1,0 +1,29 @@
+[storage]
+root = "./logs-host-test"
+flush_interval_ms = 1000
+retention_days = 90
+
+[capture]
+interface = "bridge100"
+capture_udp_53 = true
+capture_tcp_53 = true
+log_queries = true
+log_responses = false
+
+[agent]
+mode = "host"
+max_queue_events = 10000
+drop_when_full = true
+health_interval_seconds = 10
+
+[client]
+collector_addr = "127.0.0.1:53530"
+shared_token = "PuTYCjXMReptkPBH75mSfUAO8QOFhXUW6jbUXa/Zm9I="
+source_id = "auto"
+forward_queue_events = 10000
+
+[collector]
+listen_addr = "0.0.0.0:53530"
+shared_token = "PuTYCjXMReptkPBH75mSfUAO8QOFhXUW6jbUXa/Zm9I="
+allowed_subnets = ["10.211.55.0/24"]
+max_remote_queue_events = 10000

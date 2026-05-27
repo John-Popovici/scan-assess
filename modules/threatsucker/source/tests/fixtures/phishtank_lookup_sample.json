@@ -1,0 +1,8 @@
+{
+  "results": {
+    "url": "https://secure-paypal-donation.example.org/login",
+    "phish_id": "900001",
+    "verified": true,
+    "valid": true
+  }
+}
