@@ -2,36 +2,25 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from .runners.run_modules import run_modules
 
 from openai import OpenAI
-
-from src.module_config import load_module_runtime_config, write_module_runtime_config
-from src.runners.run_modules import run_modules
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODULES_ROOT = PROJECT_ROOT / "modules"
 OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
 REPORTS_ROOT = PROJECT_ROOT / "reports"
-DEMO_DNSCAP_LOG_ROOT = MODULES_ROOT / "dnscap" / "imported_logs"
 
 MODEL = "here"
 SYSTEM_PROMPT = (
-    "You are a concise cybersecurity analyst. "
-    "Analyze the supplied files as the source of truth and make no other assumptions. "
-    "Respect provenance metadata: sample or demo data is for testing only and must not produce security conclusions or action items. "
-    "Imported logs are historical observations, not proof of compromise. "
-    "Target-detection-only outputs are not service scans and must not be described as open-port findings. "
-    "If SafeSniff output has mode='target_detection_only', provenance.active_network_scan=false, or total_tcp_connect_attempts_planned=0, state that no TCP service scan was run even if the selected profile name is 'thorough'. "
-    "When DNS evidence contains lookalike, typo-squatted, login, password, invoice, payment, or document-sharing domains, classify the likely threat type such as phishing, credential theft, brand impersonation, or invoice fraud while stating that DNS logs alone do not prove compromise."
+    "You are a concise cybersecurity analyst."
+    "Analyze the supplied files as the source of truth and make no other assumptions."
 )
 USER_PROMPT = (
-    "Review the files and summarize what they contain. "
-    "Triage the findings into a maximum of 5 actionable items to improve security in order of importance. "
-    "This report should be understandable to a non technical user. "
-    "If a file contains provenance.sample_data=true or provenance.data_origin='sample', mention it only as test data and exclude it from actionable items. "
-    "When evidence is weak, say so plainly and do not invent risks. "
-    "For suspicious DNS findings, name the suspicious domains, state the likely threat category, identify the affected host if present, and recommend concrete next steps such as checking browser history, warning the user, blocking the domains, and reviewing credentials. "
+    "Review the files and summarize what they contain."
+    "Triage the findings into a maximum of 5 actionable items to improve security in order of importance."
+    "This report should be understandable to a non technical user."
     "It must be in the following markdown format:\n"
     "## Summary\n"
     "- A brief summary of the overall findings.\n"
@@ -50,42 +39,9 @@ client = OpenAI(
 )
 
 
-def configure_run_mode(*, demo: bool = False) -> list[str]:
-    """Set runner environment for the requested run path and return report notes."""
-    notes: list[str] = []
-    dnscap_module_dir = MODULES_ROOT / "dnscap"
-    threatsucker_module_dir = MODULES_ROOT / "threatsucker"
-    dnscap_config = load_module_runtime_config(dnscap_module_dir)
-    threatsucker_config = load_module_runtime_config(threatsucker_module_dir)
-
-    if demo:
-        dnscap_config["log_root"] = str(DEMO_DNSCAP_LOG_ROOT)
-        threatsucker_config["include_demo_threat_intel"] = True
-        threatsucker_config.setdefault("config_set", "default")
-        notes.append("scan-assess mode: demo")
-        notes.append(f"demo DNScap log root: {dnscap_config['log_root']}")
-        notes.append("demo ThreatSucker threat intel: enabled")
-    else:
-        threatsucker_config["include_demo_threat_intel"] = False
-        notes.append("scan-assess mode: live")
-        notes.append("demo ThreatSucker threat intel: disabled")
-
-    write_module_runtime_config(dnscap_module_dir, dnscap_config)
-    write_module_runtime_config(threatsucker_module_dir, threatsucker_config)
-    notes.append(f"DNScap import period: {dnscap_config.get('period', 'all')}")
-    if dnscap_config.get("start"):
-        notes.append(f"DNScap import start: {dnscap_config['start']}")
-    if dnscap_config.get("end"):
-        notes.append(f"DNScap import end: {dnscap_config['end']}")
-    if threatsucker_config.get("config_set"):
-        notes.append(f"ThreatSucker config set: {threatsucker_config['config_set']}")
-
-    return notes
-
-
 def create_run_dirs(ts: datetime) -> tuple[Path, Path]:
     """Create output and report directories for the current run based on the timestamp."""
-    date_path = Path(ts.strftime("%Y-%m-%dT%H:%M:%SZ").replace(":", "-"))
+    date_path = Path(ts.strftime('%Y-%m-%dT%H:%M:%SZ').replace(':', '-'))
 
     output_dir = OUTPUTS_ROOT / date_path
     report_dir = REPORTS_ROOT
@@ -95,7 +51,9 @@ def create_run_dirs(ts: datetime) -> tuple[Path, Path]:
     return output_dir, report_dir
 
 
-def collect_json_payload(json_files: list[Path], root_for_names: Path) -> list[dict[str, str]]:
+def collect_json_payload(
+    json_files: list[Path], root_for_names: Path
+) -> list[dict[str, str]]:
     return [
         {
             "filename": str(json_file.relative_to(root_for_names)),
@@ -108,9 +66,9 @@ def collect_json_payload(json_files: list[Path], root_for_names: Path) -> list[d
 def analyze_with_llm(files: list[dict[str, str]]) -> str:
     if not files:
         return "No data files were generated by modules for this run."
-
+    
     sections = [f"File: {f['filename']}\n{f['file_data']}" for f in files]
-    module_prompt = "\n\n".join(sections)
+    module_prompt: str = "\n\n".join(sections)
 
     print("Analyzing with LLM...")
 
@@ -188,19 +146,25 @@ def save_report(
 ) -> Path:
     print("Writing report...")
 
-    report_path = report_dir / f"security_report_{ts.strftime('%Y-%m-%dT%H:%M:%SZ').replace(':', '-')}.md"
+    cleaned_body = _build_body(report_body, files)
+
+    report_path = (
+        report_dir / f"security_report_{ts.strftime('%Y-%m-%dT%H:%M:%SZ').replace(':', '-')}.md"
+    )
 
     header_lines = [
         "# Security Analysis Report\n",
         f"Generated (UTC): {ts}",
     ]
 
+    # List information about the module runs
     header_lines.extend(["", "## Module Runner Information"])
     if info:
         header_lines.extend([f"- {item}" for item in info])
     else:
         header_lines.append("- No modules executed or no files generated.")
 
+    # List files that were included in the analysis
     header_lines.extend(["", "## Input Files"])
     if files:
         header_lines.extend([f"- {item['filename']}" for item in files])
@@ -214,10 +178,9 @@ def save_report(
     return report_path
 
 
-def run_assessment(*, demo: bool = False) -> Path | None:
-    run_notes = configure_run_mode(demo=demo)
+def main() -> None:
     ts = datetime.now(UTC)
-    output_dir, report_dir = create_run_dirs(ts)
+    output_dir, report_dir = create_run_dirs(ts) # Create output and report directories
 
     generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)
     if runner_errors:
@@ -225,18 +188,9 @@ def run_assessment(*, demo: bool = False) -> Path | None:
         for error in runner_errors:
             print(f"- {error}")
         print("Stopping execution due to module runner errors.")
-        return None
+        return
     payload_files = collect_json_payload(generated_json_files, output_dir)
     report_body = analyze_with_llm(payload_files)
-    report_path = save_report(ts, report_dir, report_body, payload_files, [*run_notes, *runner_info])
+    report_path = save_report(ts, report_dir, report_body, payload_files, runner_info)
 
     print(f"\nReport saved to: {report_path}")
-    return report_path
-
-
-def main() -> None:
-    run_assessment()
-
-
-if __name__ == "__main__":
-    main()

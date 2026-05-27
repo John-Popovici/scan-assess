@@ -1,75 +1,14 @@
-# scan-assess
-
-A local framework that runs security collection modules, passes their JSON outputs to a local OpenAI-compatible LLM endpoint, and writes a Markdown security report.
-
-## Run The LLM Server
+A framework that launches multiple modules to gather data and send them to a central LLM server for analysis.
 
 Optionally, with llama.cpp, in one terminal:
-
 ```bash
 ./launch_llama.sh
 ```
 
-The scanner expects an OpenAI-compatible endpoint at:
-
-```text
-http://localhost:8033/v1
-```
-
-## Run scan-assess
-
-Install dependencies:
-
+In another terminal, prepare and run the main script:
 ```bash
 uv sync
+uv run main.py
 ```
 
-Official/live path:
-
-```bash
-uv run python main.py --live
-```
-
-Demo path, including the bundled phishing-DNS scenario and demo ThreatSucker intel:
-
-```bash
-uv run python main.py --demo
-```
-
-DNScap log folders and time windows are configured inside the DNScap module:
-
-```text
-modules/dnscap/config/scan_assess_runtime.json
-```
-
-The DNScap wrapper imports stored collector logs for the configured window, such as all logs, last week/month/year, since the previous successful scan-assess DNScap import, or a custom date range.
-
-Reports are written to `reports/`. Module outputs are written to `outputs/`.
-
-## Imported Modules
-
-- `modules/enumeros`: live local host/software/browser inventory.
-- `modules/safesniff`: conservative target detection by default; active scans require opt-in.
-- `modules/dnscap`: DNScap DNS log importer.
-- `modules/threatsucker`: explainable threat-intel correlation over module outputs.
-
-## ThreatSucker UI
-
-```bash
-cd modules/threatsucker/source
-uv run threatsucker web --host 127.0.0.1 --port 8765
-```
-
-Open:
-
-```text
-http://127.0.0.1:8765/config
-```
-
-The config UI provides source toggles, source import, scoring sliders, YAML validation, and raw YAML editing.
-
-## Safety Notes
-
-- Bundled phishing DNS logs are only used by `--demo` or when configured in `modules/dnscap/config/scan_assess_runtime.json`.
-- Bundled demo ThreatSucker intel is excluded from official scan-assess runner workspaces unless `--demo` is used or `modules/threatsucker/config/scan_assess_runtime.json` enables it.
-- Prompting is provenance-aware: sample/demo data is excluded from action items, imported DNS logs are treated as historical observations, and SafeSniff target detection is not described as a TCP service scan.
+Modules are expected to write JSON files to the `output` directory. The main script will read those files, send their contents to the LLM server, and generate a markdown report in the `reports` directory.

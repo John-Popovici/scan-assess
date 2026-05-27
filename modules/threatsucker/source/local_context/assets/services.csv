@@ -1,6 +1,0 @@
-host,service,port,public_facing,source
-web-01,https,443,true,
-web-01,http,80,true,
-192.168.1.20,smb,445,false,safesniff
-192.168.1.10,https,443,false,enumeros
-192.168.1.20,smb,445,false,enumeros

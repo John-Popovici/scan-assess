@@ -1,7 +1,0 @@
-host,owner,role,os,source,mac,vendor_hint,name_hint
-laptop-01,finance,staff laptop,Windows 11,,,,
-laptop-02,programs,staff laptop,macOS,,,,
-web-01,it,public donation website,Ubuntu 22.04,,,,
-laptop-03,,endpoint,macOS 14.4,enumeros,,,
-192.168.1.20,,network-discovered,,safesniff,,,
-192.168.1.30,,observed-network-host,unix_like_or_mobile_probable,safesniff,00:1c:42:00:00:01,Parallels,demo-host.local

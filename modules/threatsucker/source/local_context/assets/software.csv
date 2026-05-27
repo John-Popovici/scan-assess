@@ -1,6 +1,0 @@
-host,vendor,product,version,source
-laptop-01,Microsoft,Microsoft Office,2402,
-laptop-01,Adobe,Acrobat Reader,2024.002,
-web-01,OpenSSL,OpenSSL,3.0.2,
-web-01,WordPress,WordPress,6.4,
-laptop-03,,macOS,14.4,enumeros

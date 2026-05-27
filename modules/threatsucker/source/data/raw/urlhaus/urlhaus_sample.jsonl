@@ -1,2 +1,0 @@
-{"id":"UH-1","url":"http://malware-drop.example.net/payload.exe","url_status":"online","date_added":"2026-05-01T08:00:00Z","threat":"loader","tags":["exe","malware"]}
-{"id":"UH-DEMO-2","url":"http://updates-lu-check.example.net/chrome-update.exe","url_status":"online","date_added":"2026-05-02T07:30:00Z","threat":"fake-browser-update-loader","tags":["exe","malware","loader"]}
