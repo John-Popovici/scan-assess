@@ -145,6 +145,8 @@ def score_indicator(indicator: NormalizedIndicator, local_context: LocalContext,
     allowlisted = domain and domain in {normalize_domain(d) for d in local_context.allowlist_domains}
     if allowlisted:
         score = _add(score, penalties.get("allowlisted_domain", -100), "allowlisted_domain", domain, reasons)
+        score = 0
+        reasons.append("forced_archive allowlisted_domain: trusted local allowlist entry")
 
     local_or_context_match = bool(dns_matches or org_matches or brand_matches or "geo:" in " ".join(matched))
     if not local_or_context_match:

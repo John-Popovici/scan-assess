@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from src.module_config import load_module_runtime_config
 from src.runners.base_runner import BaseRunner
 
 
@@ -118,9 +119,15 @@ class Runner(BaseRunner):
     """Run ThreatSucker's explainable threat-intel correlation pipeline."""
 
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
+        config = load_module_runtime_config(module_dir)
         source_root = module_dir / "source"
         work_root = output_dir / "workspace"
-        include_demo_intel = os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", "").strip().lower() in {"1", "true", "yes"}
+        include_demo_intel = bool(
+            config.get(
+                "include_demo_threat_intel",
+                os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", "").strip().lower() in {"1", "true", "yes"},
+            )
+        )
         _copy_work_tree(source_root, work_root, include_demo_intel=include_demo_intel)
 
         package_root = work_root / "src"
@@ -137,7 +144,7 @@ class Runner(BaseRunner):
         run_root = output_dir.parent
         paths = ProjectPaths.discover(work_root)
         ensure_default_config_set(paths)
-        config_set = os.environ.get("SCAN_ASSESS_THREATSUCKER_CONFIG_SET", "").strip()
+        config_set = str(config.get("config_set") or os.environ.get("SCAN_ASSESS_THREATSUCKER_CONFIG_SET", "")).strip()
         if config_set:
             apply_config_set(paths, config_set)
 

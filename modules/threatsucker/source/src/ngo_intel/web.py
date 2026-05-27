@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 import json
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,9 +30,11 @@ from .local_context.dnscap_highlight import highlight_current_mini
 from .local_context.enumeros_filter import filter_enumeros_documents
 from .local_context.importers import CollectorJsonError, import_enumeros_json, import_safesniff_json
 from .mini import list_mini_profiles, run_mini
+from .normalize import normalize_all
 from .ngo_brief import build_ngo_relevance_brief
 from .overview import build_overview
 from .paths import ProjectPaths
+from .scoring import score_all
 
 
 PAGE = """
@@ -146,6 +150,19 @@ PAGE = """
     .validation-strip { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
     .import-row { display:grid; grid-template-columns:220px 1fr auto; gap:10px; align-items:end; }
     @media (max-width: 800px) { .import-row { grid-template-columns:1fr; } }
+    .validation-grid { display:grid; grid-template-columns:minmax(320px, .85fr) minmax(420px, 1.15fr); gap:16px; align-items:start; }
+    @media (max-width: 1000px) { .validation-grid { grid-template-columns:1fr; } }
+    .case-list { display:grid; gap:10px; }
+    .case-card { border:1px solid var(--line); border-radius:8px; padding:13px; background:white; }
+    .case-card.pass { border-color:#b9dec9; background:#f7fcf9; }
+    .case-card.fail { border-color:#ecc0ba; background:#fff8f7; }
+    .case-title { display:flex; justify-content:space-between; gap:10px; align-items:start; margin-bottom:8px; }
+    .case-title strong { font-size:15px; }
+    .result-kpis { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin:12px 0; }
+    @media (max-width: 900px) { .result-kpis { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    .result-kpi { border:1px solid var(--line); border-radius:8px; padding:10px; background:#fbfcfe; }
+    .result-kpi strong { display:block; font-size:22px; }
+    .validation-json { max-height:520px; font-size:12px; }
   </style>
 </head>
 <body>
@@ -158,6 +175,7 @@ PAGE = """
       <nav class="quicklinks">
         <a href="{{ url_for('brief_md') }}">Human brief</a>
         <a href="{{ url_for('config_page') }}">Config</a>
+        <a href="{{ url_for('validation_page') }}">Validation</a>
         <a href="{{ url_for('api_overview') }}">Overview JSON</a>
         <a href="{{ url_for('api_brief') }}">Brief JSON</a>
         <a href="{{ url_for('api_deep_evidence') }}">Deep evidence</a>
@@ -333,6 +351,33 @@ def create_app(project_root: str | Path | None = None) -> Flask:
         except (OSError, ValueError) as exc:
             flash(f"Could not import source files: {exc}")
         return redirect(url_for("config_page", set=selected))
+
+    @app.get("/validation")
+    def validation_page() -> str:
+        results = _read_json(paths.data_dir / "validation_runs" / "current" / "validation_result.json")
+        body = render_template_string(VALIDATION_PAGE, results=results)
+        return render_template_string(PAGE, body=body)
+
+    @app.post("/validation/run")
+    def validation_run() -> Response:
+        try:
+            results = _run_validation_suite(paths)
+            failed = [case for case in results["cases"] if not case["passed"]]
+            flash(
+                "Validation suite passed."
+                if not failed
+                else f"Validation suite completed with {len(failed)} failing case(s)."
+            )
+        except Exception as exc:
+            flash(f"Validation suite failed to run: {exc}")
+        return redirect(url_for("validation_page"))
+
+    @app.get("/api/validation")
+    def api_validation() -> Any:
+        result_path = paths.data_dir / "validation_runs" / "current" / "validation_result.json"
+        if not result_path.exists():
+            return jsonify({"status": "not_run", "cases": []})
+        return jsonify(_read_json(result_path))
 
     @app.get("/brief")
     def brief_md() -> str:
@@ -980,6 +1025,75 @@ CONFIG_EDITOR = """
 """
 
 
+VALIDATION_PAGE = """
+<section class="operator-bar">
+  <div>
+    <h2>ThreatSucker Validation</h2>
+    <p class="muted">
+      Runs isolated correlation checks against synthetic local evidence and threat intel. This validates the reduction engine,
+      scoring rules, allowlist handling, and vulnerability matching without changing live project evidence.
+    </p>
+  </div>
+  <div class="operator-actions">
+    <form method="post" action="{{ url_for('validation_run') }}">
+      <input type="submit" value="Run validation suite">
+    </form>
+    <a class="rail-link" href="{{ url_for('config_page') }}">Config</a>
+    <a class="rail-link" href="{{ url_for('index') }}">Dashboard</a>
+  </div>
+</section>
+
+{% if not results %}
+  <section class="panel" style="margin-top:16px">
+    <h2>No validation run yet</h2>
+    <p class="muted">Run the suite to create a controlled evidence pack and check the correlation outputs.</p>
+  </section>
+{% else %}
+  <section class="result-kpis">
+    <div class="result-kpi"><strong>{{ results.summary.total }}</strong><span class="muted">cases</span></div>
+    <div class="result-kpi"><strong>{{ results.summary.passed }}</strong><span class="muted">passed</span></div>
+    <div class="result-kpi"><strong>{{ results.summary.failed }}</strong><span class="muted">failed</span></div>
+    <div class="result-kpi"><strong>{{ results.summary.relevant_indicators }}</strong><span class="muted">relevant indicators</span></div>
+  </section>
+
+  <section class="validation-grid">
+    <div class="case-list">
+      {% for case in results.cases %}
+        <article class="case-card {{ 'pass' if case.passed else 'fail' }}">
+          <div class="case-title">
+            <strong>{{ case.name }}</strong>
+            <span class="pill {{ 'ok' if case.passed else 'warn' }}">{{ 'pass' if case.passed else 'fail' }}</span>
+          </div>
+          <p class="muted">{{ case.description }}</p>
+          <table class="compact">
+            <tr><td>Expected</td><td>{{ case.expected }}</td></tr>
+            <tr><td>Actual</td><td>{{ case.actual }}</td></tr>
+            {% if case.score is not none %}<tr><td>Score</td><td>{{ case.score }}</td></tr>{% endif %}
+            {% if case.priority %}<tr><td>Priority</td><td>{{ case.priority }}</td></tr>{% endif %}
+          </table>
+          {% if case.messages %}
+            <ul class="validation-list">
+              {% for message in case.messages %}<li>{{ message }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+    <div class="panel">
+      <h2>Pipeline Output</h2>
+      <p class="paths"><strong>Workspace</strong><br>{{ results.workspace }}</p>
+      <table class="compact">
+        <tr><td>Normalized indicators</td><td>{{ results.summary.normalized_indicators }}</td></tr>
+        <tr><td>Normalized vulnerabilities</td><td>{{ results.summary.normalized_vulnerabilities }}</td></tr>
+        <tr><td>Relevant vulnerabilities</td><td>{{ results.summary.relevant_vulnerabilities }}</td></tr>
+      </table>
+      <pre class="validation-json">{{ results | tojson(indent=2) }}</pre>
+    </div>
+  </section>
+{% endif %}
+"""
+
+
 def _config_editor_files(paths: ProjectPaths, config_set: str) -> list[dict[str, Any]]:
     files: list[dict[str, Any]] = []
     for rel in CONFIG_FILES:
@@ -1061,6 +1175,298 @@ SOURCE_MODE_LABELS = {
     "fixture": "Stored demo only",
     "imported_only": "Imported only",
 }
+
+
+def _run_validation_suite(paths: ProjectPaths) -> dict[str, Any]:
+    validation_root = paths.data_dir / "validation_runs" / "current"
+    if validation_root.exists():
+        shutil.rmtree(validation_root)
+    validation_paths = ProjectPaths(validation_root)
+    _prepare_validation_workspace(paths, validation_paths)
+
+    normalized_indicators, normalized_vulnerabilities = normalize_all(validation_paths)
+    scored_indicators, scored_vulnerabilities = score_all(validation_paths)
+
+    by_value = {item.value: item for item in scored_indicators}
+    by_vuln = {item.vuln_id: item for item in scored_vulnerabilities}
+    phishing = by_value.get("login-micros0ft-security.com")
+    allowlisted = by_value.get("microsoft.com")
+    chrome_vuln = by_vuln.get("CVE-2026-54321")
+
+    cases = [
+        _validation_case(
+            name="DNS threat correlation",
+            description="A phishing domain from MISP is also present in observed DNS context, so it should score as a high/critical local match.",
+            expected="priority high or critical, with a dns: matched_local_data entry",
+            actual=_indicator_actual(phishing),
+            passed=bool(
+                phishing
+                and phishing.priority in {"high", "critical"}
+                and any(str(match).startswith("dns:") for match in phishing.matched_local_data)
+            ),
+            score=phishing.score if phishing else None,
+            priority=phishing.priority if phishing else None,
+        ),
+        _validation_case(
+            name="Allowlist suppression",
+            description="A benign allowlisted domain appears in DNS and intel, but the allowlist should stop it becoming actionable.",
+            expected="priority archive or low, never medium/high/critical",
+            actual=_indicator_actual(allowlisted),
+            passed=bool(allowlisted and allowlisted.priority in {"archive", "low"} and allowlisted.score <= 20),
+            score=allowlisted.score if allowlisted else None,
+            priority=allowlisted.priority if allowlisted else None,
+        ),
+        _validation_case(
+            name="Vulnerability inventory match",
+            description="A Chrome vulnerability should correlate to a Chrome browser version in local inventory.",
+            expected="priority high or critical, with at least one matched asset",
+            actual=_vulnerability_actual(chrome_vuln),
+            passed=bool(chrome_vuln and chrome_vuln.priority in {"high", "critical"} and chrome_vuln.matched_assets),
+            score=chrome_vuln.score if chrome_vuln else None,
+            priority=chrome_vuln.priority if chrome_vuln else None,
+        ),
+    ]
+
+    result = {
+        "status": "pass" if all(case["passed"] for case in cases) else "fail",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "workspace": str(validation_root),
+        "summary": {
+            "total": len(cases),
+            "passed": sum(1 for case in cases if case["passed"]),
+            "failed": sum(1 for case in cases if not case["passed"]),
+            "normalized_indicators": len(normalized_indicators),
+            "normalized_vulnerabilities": len(normalized_vulnerabilities),
+            "relevant_indicators": sum(1 for item in scored_indicators if item.priority != "archive"),
+            "relevant_vulnerabilities": sum(1 for item in scored_vulnerabilities if item.priority != "archive"),
+        },
+        "cases": cases,
+        "evidence_files": {
+            "misp": str(validation_paths.raw_dir / "misp" / "validation_campaign.json"),
+            "vulnerabilities": str(validation_paths.raw_dir / "vulnerability_lookup" / "validation_vulnerabilities.jsonl"),
+            "dns": str(validation_paths.local_context_dir / "dns" / "current" / "queries.csv"),
+            "browsers": str(validation_paths.local_context_dir / "assets" / "browsers.csv"),
+        },
+    }
+    result_path = validation_root / "validation_result.json"
+    result_path.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")
+    return result
+
+
+def _prepare_validation_workspace(source_paths: ProjectPaths, validation_paths: ProjectPaths) -> None:
+    validation_paths.project_root.mkdir(parents=True, exist_ok=True)
+    _copy_or_write_config(source_paths, validation_paths)
+    _write_validation_local_context(validation_paths)
+    _write_validation_raw_intel(validation_paths)
+
+
+def _copy_or_write_config(source_paths: ProjectPaths, validation_paths: ProjectPaths) -> None:
+    validation_paths.config_dir.mkdir(parents=True, exist_ok=True)
+    defaults = {
+        "org_profile.yaml": """org_name: Validation NGO
+country: Luxembourg
+languages: [en, fr]
+sector: nonprofit
+handles_sensitive_data: true
+handles_donor_data: true
+has_public_donation_page: true
+uses_cloud_email: true
+likely_targets: [phishing, credential_theft, invoice_fraud]
+technical_capacity: low
+""",
+        "scoring_rules.yaml": """source_weights:
+  misp: 40
+  vulnerability_lookup: 40
+relevance_boosts:
+  matched_dns_query: 40
+  matched_org_domain: 35
+  targeted_brand_used_by_org: 25
+  recent_7_days: 20
+  recent_30_days: 10
+  luxembourg_related: 25
+  neighbouring_country_related: 10
+  credential_theft: 20
+  ransomware: 25
+  c2_or_malware_distribution: 25
+  low_user_competency_environment: 15
+  matched_asset_software: 40
+  exploit_available: 20
+  known_exploited: 35
+penalties:
+  low_confidence: -20
+  stale_older_than_90_days: -25
+  no_local_match: -20
+  allowlisted_domain: -100
+priority_bands:
+  critical: 90
+  high: 70
+  medium: 45
+  low: 20
+  archive: 0
+""",
+        "source_config.yaml": """sources:
+  misp_osint:
+    enabled: true
+    mode: imported_only
+    url: ""
+    max_events: 20
+  circl_vulnerability_lookup:
+    enabled: true
+    mode: imported_only
+    url: ""
+    max_records: 20
+  phishtank:
+    enabled: false
+    mode: imported_only
+    data_url_template: ""
+    max_records: 0
+  urlhaus:
+    enabled: false
+    mode: imported_only
+    url: ""
+    max_records: 0
+""",
+        "allowlist_domains.txt": "microsoft.com\nexample.com\n",
+    }
+    for name, fallback in defaults.items():
+        source = source_paths.config_dir / name
+        target = validation_paths.config_dir / name
+        if source.exists() and name in {"org_profile.yaml", "scoring_rules.yaml"}:
+            shutil.copy2(source, target)
+        else:
+            target.write_text(fallback, encoding="utf-8")
+
+
+def _write_validation_local_context(paths: ProjectPaths) -> None:
+    (paths.local_context_dir / "org").mkdir(parents=True, exist_ok=True)
+    (paths.local_context_dir / "assets").mkdir(parents=True, exist_ok=True)
+    (paths.local_context_dir / "dns" / "current").mkdir(parents=True, exist_ok=True)
+    (paths.local_context_dir / "org" / "brands_used.txt").write_text("Microsoft 365\nPayPal\n", encoding="utf-8")
+    (paths.local_context_dir / "org" / "domains.txt").write_text("validation-ngo.lu\n", encoding="utf-8")
+    _write_csv(
+        paths.local_context_dir / "dns" / "current" / "queries.csv",
+        ["timestamp", "host", "queried_domain", "query_type", "source"],
+        [
+            {
+                "timestamp": "2026-05-27T10:00:00Z",
+                "host": "finance-laptop-01",
+                "queried_domain": "login-micros0ft-security.com",
+                "query_type": "A",
+                "source": "validation-dnscap",
+            },
+            {
+                "timestamp": "2026-05-27T10:01:00Z",
+                "host": "finance-laptop-01",
+                "queried_domain": "microsoft.com",
+                "query_type": "A",
+                "source": "validation-dnscap",
+            },
+        ],
+    )
+    _write_csv(
+        paths.local_context_dir / "assets" / "browsers.csv",
+        ["host", "browser", "version", "source"],
+        [{"host": "finance-laptop-01", "browser": "Chrome", "version": "123.0.6312.86", "source": "validation"}],
+    )
+    for name, headers in {
+        "hosts.csv": ["host", "os", "source"],
+        "software.csv": ["host", "product", "version", "source"],
+        "services.csv": ["host", "service", "port", "source"],
+        "exposed_ports.csv": ["host", "port", "service", "severity", "source"],
+    }.items():
+        _write_csv(paths.local_context_dir / "assets" / name, headers, [])
+
+
+def _write_validation_raw_intel(paths: ProjectPaths) -> None:
+    misp_dir = paths.raw_dir / "misp"
+    vuln_dir = paths.raw_dir / "vulnerability_lookup"
+    misp_dir.mkdir(parents=True, exist_ok=True)
+    vuln_dir.mkdir(parents=True, exist_ok=True)
+    campaign = {
+        "Event": {
+            "uuid": "validation-correlation-campaign",
+            "info": "Validation phishing campaign targeting Microsoft 365 in Luxembourg",
+            "timestamp": "1779523920",
+            "Tag": [{"name": "phishing"}, {"name": "credential-theft"}, {"name": "Luxembourg"}],
+            "Attribute": [
+                {
+                    "uuid": "validation-domain-1",
+                    "category": "Network activity",
+                    "type": "domain",
+                    "value": "login-micros0ft-security.com",
+                    "comment": "Microsoft 365 lookalike credential theft validation domain",
+                    "to_ids": True,
+                    "timestamp": "1779523920",
+                },
+                {
+                    "uuid": "validation-domain-2",
+                    "category": "Network activity",
+                    "type": "domain",
+                    "value": "microsoft.com",
+                    "comment": "Allowlist suppression validation domain",
+                    "to_ids": True,
+                    "timestamp": "1779523920",
+                },
+            ],
+        }
+    }
+    (misp_dir / "validation_campaign.json").write_text(json.dumps(campaign, indent=2), encoding="utf-8")
+    vuln_record = {
+        "cve": "CVE-2026-54321",
+        "title": "Validation Chrome browser remote code execution vulnerability",
+        "description": "Synthetic validation record for Chrome inventory matching.",
+        "affected_products": [{"vendor": "Google", "product": "Chrome", "version": "123.0.6312.86"}],
+        "cvss": 9.4,
+        "exploit_available": True,
+        "known_exploited": True,
+        "published": "2026-05-01T00:00:00Z",
+        "modified": "2026-05-02T00:00:00Z",
+        "references": ["https://example.org/validation/CVE-2026-54321"],
+    }
+    (vuln_dir / "validation_vulnerabilities.jsonl").write_text(json.dumps(vuln_record) + "\n", encoding="utf-8")
+
+
+def _write_csv(path: Path, headers: list[str], rows: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=headers)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({header: row.get(header, "") for header in headers})
+
+
+def _validation_case(
+    *,
+    name: str,
+    description: str,
+    expected: str,
+    actual: str,
+    passed: bool,
+    score: int | None,
+    priority: str | None,
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "description": description,
+        "expected": expected,
+        "actual": actual,
+        "passed": passed,
+        "score": score,
+        "priority": priority,
+        "messages": [] if passed else ["Expected condition was not met."],
+    }
+
+
+def _indicator_actual(item: Any) -> str:
+    if item is None:
+        return "No scored indicator found."
+    return f"{item.value} scored {item.score} as {item.priority}; matches={', '.join(item.matched_local_data) or 'none'}"
+
+
+def _vulnerability_actual(item: Any) -> str:
+    if item is None:
+        return "No scored vulnerability found."
+    return f"{item.vuln_id} scored {item.score} as {item.priority}; matched_assets={', '.join(item.matched_assets) or 'none'}"
 
 
 def _save_config_form(paths: ProjectPaths, selected: str) -> None:

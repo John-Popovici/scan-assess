@@ -17,9 +17,9 @@ It also adds provenance-aware LLM prompting, explicit demo/live scan paths, and 
 - Added scan-assess runners for Enumeros, SafeSniff, DNScap, and ThreatSucker.
 - Added multi-platform Rust binary handling for Enumeros, DNScap, and SafeSniff.
 - Added provenance metadata across sample, imported, derived, target-detection-only, and live outputs.
-- Added `python -m src.scan_assess --demo` for the bundled phishing-DNS demo scenario.
-- Added `python -m src.scan_assess --live` for the official/default path.
-- Added `--dnscap-log-root`, `--threatsucker-config-set`, and `--include-demo-threat-intel`.
+- Added `python main.py --demo` for the bundled phishing-DNS demo scenario.
+- Added `python main.py --live` for the official/default path.
+- Kept module-specific runtime settings inside module-owned config files rather than top-level scan-assess CLI arguments.
 - Added ThreatSucker config sets, CLI config commands, source toggles, visual scoring sliders, YAML validation, and source-file import.
 - Added dependency updates for Flask, Typer/Rich, Pydantic, PyYAML, httpx, and dotenv.
 
@@ -39,16 +39,19 @@ The scan-assess system/user prompts now instruct the LLM to:
 
 - Demo phishing DNS lookups live under `modules/dnscap/imported_logs/`.
 - Demo ThreatSucker feed items are present for local scenario testing.
-- Official/live runs do not include demo ThreatSucker intel unless explicitly enabled.
+- Official/live runs do not include demo ThreatSucker intel unless explicitly enabled in the ThreatSucker module config.
 - ThreatSucker source normalization no longer falls back to fixtures unless a source mode explicitly contains `fixture`.
 
 Useful commands:
 
 ```bash
-uv run python -m src.scan_assess --help
-uv run python -m src.scan_assess --demo
-uv run python -m src.scan_assess --live --dnscap-log-root /path/to/real/dnscap/logs
+uv run python main.py --help
+uv run python main.py --demo
+uv run python main.py --live
 ```
+
+DNScap import windows and log roots are configured in `modules/dnscap/config/scan_assess_runtime.json`.
+ThreatSucker config-set and demo-intel settings are configured in `modules/threatsucker/config/scan_assess_runtime.json`.
 
 ThreatSucker UI:
 
@@ -62,10 +65,10 @@ uv run threatsucker web --host 127.0.0.1 --port 8765
 Commands run during development:
 
 ```bash
-python3 -m py_compile src/scan_assess.py modules/threatsucker/runner.py modules/threatsucker/source/src/ngo_intel/normalize.py
-uv run python -m src.scan_assess --help
-uv run python -c 'import sys; sys.argv=["scan-assess", "--demo"]; from src.scan_assess import parse_args, configure_run_mode; print("\n".join(configure_run_mode(parse_args())))'
-uv run python -c 'import sys; sys.argv=["scan-assess", "--live"]; from src.scan_assess import parse_args, configure_run_mode; print("\n".join(configure_run_mode(parse_args())))'
+python3 -m py_compile main.py src/scan_assess.py modules/threatsucker/runner.py modules/threatsucker/source/src/ngo_intel/normalize.py
+uv run python main.py --help
+uv run python -c 'from src.scan_assess import configure_run_mode; print("\n".join(configure_run_mode(demo=True)))'
+uv run python -c 'from src.scan_assess import configure_run_mode; print("\n".join(configure_run_mode(demo=False)))'
 ```
 
 Demo run results:
@@ -77,6 +80,6 @@ Demo run results:
 ## Reviewer Notes
 
 - `outputs/` and `reports/` are generated and ignored.
-- Bundled demo data exists for repeatable local validation, but official scan-assess execution requires explicit opt-in for demo ThreatSucker intel.
+- Bundled demo data exists for repeatable local validation, but official scan-assess execution requires explicit opt-in through module config or `python main.py --demo`.
 - SafeSniff defaults to target detection to avoid unsolicited network scanning.
 - DNScap is integrated as a log importer rather than live packet capture.
