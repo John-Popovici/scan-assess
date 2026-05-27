@@ -1,0 +1,3 @@
+[submodule "modules/quiz/scan-assess-quiz"]
+	path = modules/quiz/scan-assess-quiz
+	url = git@github.com:John-Popovici/scan-assess-quiz.git

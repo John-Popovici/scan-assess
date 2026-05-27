@@ -72,7 +72,7 @@ def run_modules(modules_dir: Path, output_dir: Path) -> tuple[list[Path], list[s
                 [
                     file
                     for file in module_files
-                    if file.suffix.lower() == ".json" and file.exists()
+                    if file.exists()
                 ]
             )
             info.append(f"{module_dir.name}: {len(module_files)} files generated.")
