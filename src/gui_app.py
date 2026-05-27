@@ -139,6 +139,13 @@ def _module_settings_surfaces(module_name: str) -> list[dict[str, str]]:
     return surfaces
 
 
+def _module_config_surface(module_name: str) -> dict[str, str] | None:
+    for surface in _module_settings_surfaces(module_name):
+        if surface.get("kind") == "config":
+            return surface
+    return None
+
+
 def _local_tcp_port_open(host: str, port: int) -> bool:
     try:
         with socket.create_connection((host, port), timeout=0.25):
@@ -285,28 +292,44 @@ def _parse_config_datetime(value: Any) -> datetime | None:
 
 
 def _dnscap_window_from_config(config: dict[str, Any]) -> tuple[str, datetime | None, datetime | None]:
-    period = str(config.get("period") or "forever").strip().lower()
+    aliases = {
+        "": "all",
+        "all": "all",
+        "forever": "all",
+        "day": "last_day",
+        "last_day": "last_day",
+        "week": "last_week",
+        "last_week": "last_week",
+        "month": "last_month",
+        "last_month": "last_month",
+        "year": "last_year",
+        "last_year": "last_year",
+        "since_last_run": "since_last_scan",
+        "since_last_scan": "since_last_scan",
+        "custom": "custom",
+        "range": "custom",
+        "time_period": "custom",
+    }
+    period = aliases.get(str(config.get("period") or "all").strip().lower(), "all")
     end = _parse_config_datetime(config.get("end")) or datetime.now(UTC)
     start = _parse_config_datetime(config.get("start"))
-    if period == "since_last_run":
-        if bool(config.get("use_last_run_marker")):
-            start = _parse_config_datetime(config.get("last_run_utc"))
-        else:
-            period = "forever"
-            start = None
+    if period == "since_last_scan":
+        start = _parse_config_datetime(config.get("last_run_utc"))
+        if start is None:
+            period = "all"
             end = None
-    elif period == "day":
+    elif period == "last_day":
         start = start or end - timedelta(days=1)
-    elif period == "week":
+    elif period == "last_week":
         start = start or end - timedelta(weeks=1)
-    elif period == "month":
+    elif period == "last_month":
         start = start or end - timedelta(days=31)
-    elif period == "year":
+    elif period == "last_year":
         start = start or end - timedelta(days=366)
-    elif period in {"custom", "range"}:
+    elif period == "custom":
         period = "custom"
     else:
-        period = "forever"
+        period = "all"
         start = None
         end = None
     return period, start, end
@@ -437,8 +460,17 @@ def _default_dnscap_log_root() -> str:
 
 
 def _default_dnscap_period() -> str:
-    period = str(load_module_runtime_config(MODULES_ROOT / "dnscap").get("period") or "forever")
-    return period if period in {"day", "week", "month", "year", "forever", "custom", "since_last_run"} else "forever"
+    aliases = {
+        "forever": "all",
+        "day": "last_day",
+        "week": "last_week",
+        "month": "last_month",
+        "year": "last_year",
+        "since_last_run": "since_last_scan",
+    }
+    period = str(load_module_runtime_config(MODULES_ROOT / "dnscap").get("period") or "all")
+    period = aliases.get(period, period)
+    return period if period in {"all", "last_day", "last_week", "last_month", "last_year", "custom", "since_last_scan"} else "all"
 
 
 def _run_name_from_report(report_name: str) -> str | None:
@@ -1380,7 +1412,12 @@ def main_page() -> None:
         "dnscap_period": _default_dnscap_period(),
         "dnscap_start": str(load_module_runtime_config(MODULES_ROOT / "dnscap").get("start") or ""),
         "dnscap_end": str(load_module_runtime_config(MODULES_ROOT / "dnscap").get("end") or ""),
-        "dnscap_use_last_run_marker": bool(load_module_runtime_config(MODULES_ROOT / "dnscap").get("use_last_run_marker", False)),
+        "dnscap_use_last_run_marker": bool(
+            load_module_runtime_config(MODULES_ROOT / "dnscap").get(
+                "update_last_run_marker",
+                load_module_runtime_config(MODULES_ROOT / "dnscap").get("use_last_run_marker", False),
+            )
+        ),
         "dnscap_last_run_utc": str(load_module_runtime_config(MODULES_ROOT / "dnscap").get("last_run_utc") or ""),
     }
 
@@ -1524,7 +1561,7 @@ def main_page() -> None:
 
                 def save_dnscap_runtime_config() -> None:
                     log_root = str(state.get("dnscap_log_root") or "").strip()
-                    period = str(state.get("dnscap_period") or "forever").strip()
+                    period = str(state.get("dnscap_period") or "all").strip()
                     start = str(state.get("dnscap_start") or "").strip()
                     end = str(state.get("dnscap_end") or "").strip()
                     values: dict[str, str | None] = {
@@ -1532,7 +1569,8 @@ def main_page() -> None:
                         "period": period,
                         "start": start if period == "custom" and start else None,
                         "end": end if period == "custom" and end else None,
-                        "use_last_run_marker": bool(state.get("dnscap_use_last_run_marker", False)),  # type: ignore[dict-item]
+                        "update_last_run_marker": bool(state.get("dnscap_use_last_run_marker", False)),  # type: ignore[dict-item]
+                        "use_last_run_marker": bool(state.get("dnscap_use_last_run_marker", False)),  # compatibility
                         "last_run_utc": str(state.get("dnscap_last_run_utc") or "") or None,
                     }
                     write_module_runtime_config(MODULES_ROOT / "dnscap", values)
@@ -1733,7 +1771,7 @@ def main_page() -> None:
                                 if not isinstance(dnscap_import, dict):
                                     dnscap_import = {}
                                 dnscap_root = dnscap_import.get("log_root") or "default"
-                                dnscap_window = dnscap_import.get("period") or "forever"
+                                dnscap_window = dnscap_import.get("period") or "all"
                                 if dnscap_import.get("start") or dnscap_import.get("end"):
                                     dnscap_window = f"{dnscap_window}: {dnscap_import.get('start') or 'beginning'} to {dnscap_import.get('end') or 'now'}"
                                 generated_local = manifest.get("generated_at_local") or (_european_datetime_label(run_name) if run_name else "not recorded")
@@ -2470,31 +2508,35 @@ def main_page() -> None:
                                         if row["module"] == "dnscap":
                                             with ui.expansion("DNScap import settings", icon="dns", value=False).classes("w-full"):
                                                 ui.markdown(
-                                                    "Configure which historical DNS logs DNScap imports. "
-                                                    "The last-run marker is off by default; when enabled, DNScap can import only events after the previous run marker."
+                                                    "DNScap runs as a background collector. Configure which stored DNS logs this module imports into scan-assess. "
+                                                    "The last-scan marker is off by default; when enabled, DNScap imports only events after the previous scan marker."
                                                 ).classes("sa-muted text-sm")
                                                 dnscap_module_log_root = ui.input("DNScap folder", value=state["dnscap_log_root"]).props("dense outlined").classes("w-full")
                                                 dnscap_module_period = ui.select(
                                                     {
-                                                        "day": "Last day",
-                                                        "week": "Last week",
-                                                        "month": "Last month",
-                                                        "year": "Last year",
-                                                        "forever": "Forever",
+                                                        "all": "All stored logs",
+                                                        "last_day": "Last day",
+                                                        "last_week": "Last week",
+                                                        "last_month": "Last month",
+                                                        "last_year": "Last year",
+                                                        "since_last_scan": "Since last scan",
                                                         "custom": "Date range",
-                                                        "since_last_run": "Since last run marker",
                                                     },
                                                     label="DNScap period",
                                                     value=state["dnscap_period"],
                                                 ).props("dense outlined").classes("w-full")
                                                 dnscap_module_start = ui.input("DNScap start", value=state["dnscap_start"]).props("dense outlined placeholder=2026-05-27T00:00:00Z").classes("w-full")
                                                 dnscap_module_end = ui.input("DNScap end", value=state["dnscap_end"]).props("dense outlined placeholder=2026-05-27T23:59:59Z").classes("w-full")
-                                                dnscap_module_marker = ui.checkbox("Update and use last-run marker", value=state["dnscap_use_last_run_marker"]).classes("sa-muted")
+                                                dnscap_module_marker = ui.checkbox("Update last-scan marker after import", value=state["dnscap_use_last_run_marker"]).classes("sa-muted")
                                                 dnscap_marker_status = ui.markdown(f"Last marker: `{state['dnscap_last_run_utc'] or 'not set'}`").classes("sa-muted text-sm")
+                                                dnscap_config_surface = _module_config_surface("dnscap")
+                                                if dnscap_config_surface:
+                                                    with ui.expansion("Detected DNScap config files", icon="folder", value=False).classes("w-full"):
+                                                        ui.markdown(dnscap_config_surface["detail"]).classes("sa-muted text-sm")
 
                                                 def save_dnscap_from_modules() -> None:
                                                     state["dnscap_log_root"] = str(dnscap_module_log_root.value or "").strip()
-                                                    state["dnscap_period"] = str(dnscap_module_period.value or "forever").strip()
+                                                    state["dnscap_period"] = str(dnscap_module_period.value or "all").strip()
                                                     state["dnscap_start"] = str(dnscap_module_start.value or "").strip()
                                                     state["dnscap_end"] = str(dnscap_module_end.value or "").strip()
                                                     state["dnscap_use_last_run_marker"] = bool(dnscap_module_marker.value)
@@ -2508,9 +2550,12 @@ def main_page() -> None:
                                                 ui.button("Save DNScap settings", icon="save", on_click=save_dnscap_from_modules).props("outline dense").classes("w-full")
                                         if row["module"] == "example_module":
                                             ui.markdown("Disabled by default because it produces example/test evidence.").classes("sa-muted")
-                                        surfaces = _module_settings_surfaces(row["module"])
-                                        with ui.expansion("Settings surface", icon="settings", value=False).classes("w-full"):
-                                            if surfaces:
+                                        surfaces = [
+                                            surface for surface in _module_settings_surfaces(row["module"])
+                                            if surface.get("kind") == "web" and row["module"] != "dnscap"
+                                        ]
+                                        if surfaces:
+                                            with ui.expansion("Module controls", icon="settings", value=False).classes("w-full"):
                                                 for surface in surfaces:
                                                     with ui.column().classes("sa-band p-2 gap-1 w-full"):
                                                         ui.markdown(f"**{surface['label']}**").classes("sa-muted")
@@ -2546,8 +2591,6 @@ def main_page() -> None:
                                                                     icon="stop",
                                                                     on_click=lambda s=surface, st=status: stop_settings_surface(s, st),
                                                                 ).props("outline dense color=negative").classes("grow")
-                                            else:
-                                                ui.markdown("No settings page detected. A module manifest would make this reliable.").classes("sa-muted")
 
 
 ui.run(

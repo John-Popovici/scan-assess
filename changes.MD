@@ -30,9 +30,10 @@ All imported Rust-based tools are treated as multi-platform collectors.
   - Vendored Rust workspace source, docs, configs, lockfile, and platform binaries.
   - Added `runner.py` that imports existing DNScap `dns.jsonl` or `dns.csv` logs and writes `dnscap_summary.json`.
   - Adds provenance metadata marking bundled logs as sample data and external log roots as imported evidence.
+  - Treats DNScap as a Rust background collector with multi-platform binaries under `modules/dnscap/bin/`; scan-assess does not start packet capture, and the Python runner records the matching collector binary for the current platform.
+  - Owns temporal import selection in `modules/dnscap/config/scan_assess_runtime.json`, supporting all stored logs, last day/week/month/year, since last successful scan-assess DNScap import, and custom start/end windows.
   - Added sample DNScap test logs under `modules/dnscap/sample_logs/localhost/2026/05/02/`.
   - Added imported DNScap-style DNS logs under `modules/dnscap/imported_logs/` for report-quality testing with suspicious historical DNS evidence.
-  - Supports overriding the log root with `SCAN_ASSESS_DNSCAP_LOG_ROOT`.
 
 - `modules/threatsucker/`
   - Vendored a clean project-local copy of ThreatSucker / `ngo-intel` without virtualenvs, cache files, old generated mini/scored outputs, or original git metadata.
@@ -82,12 +83,13 @@ All imported Rust-based tools are treated as multi-platform collectors.
 - Enumeros is a live local collector and includes local network discovery in its current implementation.
 - DNScap is integrated as a log importer rather than a live packet capture runner. Live capture often requires elevated privileges and host-specific packet capture dependencies.
 - `scan-assess` now has explicit run paths:
-  - `python -m src.scan_assess --demo` enables the bundled phishing-DNS demo logs and bundled demo ThreatSucker intel.
-  - `python -m src.scan_assess --live` is the official/default path and disables bundled demo ThreatSucker intel.
+  - `python main.py --demo` enables the bundled phishing-DNS demo logs and bundled demo ThreatSucker intel.
+  - `python main.py --live` is the official/default path and disables bundled demo ThreatSucker intel.
+- CLI parsing now lives in `main.py`; `src/scan_assess.py` exposes callable runner logic and no longer owns argparse setup.
 - Module-specific configuration now lives inside each module directory rather than expanding the top-level scan-assess launch arguments. DNScap runtime import settings are stored under `modules/dnscap/config/scan_assess_runtime.json`, and ThreatSucker runtime settings are stored under `modules/threatsucker/config/scan_assess_runtime.json`.
-- Deprecated DNScap/ThreatSucker CLI overrides are still accepted for compatibility, but they are hidden from `--help` and are translated into module-local runtime config before modules run.
-- Bundled phishing DNS lookups live under `modules/dnscap/imported_logs/` and are only used automatically by `--demo` or when explicitly passed as `--dnscap-log-root`.
-- Bundled demo ThreatSucker feed items are excluded from scan-assess runner workspaces unless `--demo` or `--include-demo-threat-intel` is used.
+- DNScap temporal controls are module-owned rather than scan-assess CLI arguments. The scan-assess runner reads the configured DNScap window from the DNScap module at run time and records that provenance in reports/manifests.
+- Bundled phishing DNS lookups live under `modules/dnscap/imported_logs/` and are only used automatically by `--demo` or when the DNScap module config points at them.
+- Bundled demo ThreatSucker feed items are excluded from scan-assess runner workspaces unless `--demo` is used or `modules/threatsucker/config/scan_assess_runtime.json` enables them.
 - ThreatSucker source normalization no longer falls back to fixture files unless a source mode explicitly contains `fixture`.
 - The LLM prompt now instructs reports to respect provenance, exclude sample/demo data from action items, and avoid describing target-detection-only output as a service scan.
 - The LLM prompt now explicitly tells the model that SafeSniff `target_detection_only`, `active_network_scan=false`, or `total_tcp_connect_attempts_planned=0` means no TCP service scan was run, even if the selected profile name is `thorough`.
@@ -135,7 +137,7 @@ All imported Rust-based tools are treated as multi-platform collectors.
 - Condensed the Reports scan settings area so reports remain centre stage. The prompt selector stays readable, output paths are compact, and the run log no longer reserves visible space on the normal report view.
 - Renamed generated report metadata to `Run Parameters and Provenance` and added enabled-module selection to both the report metadata and run manifest.
 - Fixed the Evidence Browser layout so the module tree and selected evidence viewer are constrained to the viewport and scroll internally. Evidence trees now expand only to the module level by default so large ThreatSucker workspaces do not hide the other module outputs.
-- Updated DNScap to behave as a background-collector import module. Existing forever/all-files import remains available, and new run parameters allow last day, last week, last month, last year, or a custom date range to filter imported DNS events from the selected log folder.
+- Updated DNScap to behave as a background-collector import module. The DNScap module owns its import window, with all stored logs as the default and module-local settings for last day, last week, last month, last year, since last scan, or a custom date range.
 - Added DNScap folder and import-period controls to Reports scan settings, with the chosen folder/window recorded in generated reports and `run_manifest.json`.
 - Updated the GUI to persist DNScap import controls into DNScap's module-local runtime config before a run, keeping the module plug-in interface generic.
 - Moved DNScap import-window controls out of Reports and into the Modules page, so Reports stays focused on assessment output.

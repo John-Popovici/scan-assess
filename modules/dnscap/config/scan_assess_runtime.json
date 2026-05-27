@@ -1,5 +1,6 @@
 {
   "log_root": "sample_logs",
-  "period": "forever",
+  "period": "all",
+  "update_last_run_marker": false,
   "use_last_run_marker": false
 }

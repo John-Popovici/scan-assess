@@ -27,25 +27,27 @@ uv sync
 Official/live path:
 
 ```bash
-uv run python -m src.scan_assess --live
+uv run python main.py --live
 ```
 
 Demo path, including the bundled phishing-DNS scenario and demo ThreatSucker intel:
 
 ```bash
-uv run python -m src.scan_assess --demo
+uv run python main.py --demo
 ```
 
-Official run with real DNScap logs:
+DNScap log folders and time windows are configured inside the DNScap module:
 
-```bash
-uv run python -m src.scan_assess --live --dnscap-log-root /path/to/dnscap/logs
+```text
+modules/dnscap/config/scan_assess_runtime.json
 ```
+
+The DNScap wrapper imports stored collector logs for the configured window, such as all logs, last week/month/year, since the previous successful scan-assess DNScap import, or a custom date range.
 
 Select a model endpoint/profile:
 
 ```bash
-uv run python -m src.scan_assess --live --llm-profile local-llamacpp
+uv run python main.py --live --llm-profile local-llamacpp
 ```
 
 Reports are written to `reports/`. Module outputs are written to `outputs/`.
@@ -106,6 +108,6 @@ The config UI provides source toggles, source import, scoring sliders, YAML vali
 
 ## Safety Notes
 
-- Bundled phishing DNS logs are only used by `--demo` or when explicitly passed with `--dnscap-log-root`.
-- Bundled demo ThreatSucker intel is excluded from official scan-assess runner workspaces unless `--demo` or `--include-demo-threat-intel` is used.
+- Bundled phishing DNS logs are only used by `--demo` or when configured in `modules/dnscap/config/scan_assess_runtime.json`.
+- Bundled demo ThreatSucker intel is excluded from official scan-assess runner workspaces unless `--demo` is used or `modules/threatsucker/config/scan_assess_runtime.json` enables it.
 - Prompting is provenance-aware: sample/demo data is excluded from action items, imported DNS logs are treated as historical observations, and SafeSniff target detection is not described as a TCP service scan.

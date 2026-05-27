@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import platform
 import socket
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -41,72 +41,14 @@ def european_time_label(ts: datetime) -> str:
     return ts.astimezone(LOCAL_TZ).strftime("%d/%m/%Y %H:%M:%S %Z")
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run scan-assess modules and generate a local LLM security report.",
-    )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--demo",
-        action="store_true",
-        help="Run the bundled phishing-DNS demo scenario with demo ThreatSucker intel enabled.",
-    )
-    mode.add_argument(
-        "--live",
-        action="store_true",
-        help="Run the normal official path. This is the default when --demo is not supplied.",
-    )
-    parser.add_argument(
-        "--dnscap-log-root",
-        type=Path,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--dnscap-period",
-        choices=["day", "week", "month", "year", "forever", "custom", "since_last_run"],
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--dnscap-start",
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--dnscap-end",
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--threatsucker-config-set",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--include-demo-threat-intel",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--prompt-profile",
-        default=None,
-        help="Prompt profile name from config/prompt_profiles.",
-    )
-    parser.add_argument(
-        "--llm-profile",
-        default=None,
-        help="LLM profile name from config/llm_profiles.",
-    )
-    parser.add_argument(
-        "--scenario",
-        default=None,
-        help="Scenario pack name from config/scenarios. Scenario defaults can still be overridden by explicit CLI options.",
-    )
-    parser.add_argument(
-        "--prompt-dev-evidence",
-        type=Path,
-        help="JSON file containing editable Prompt Developer evidence. When supplied, modules are not executed.",
-    )
-    return parser.parse_args()
+@dataclass
+class RunOptions:
+    demo: bool = False
+    live: bool = False
+    prompt_profile: str | None = None
+    llm_profile: str | None = None
+    scenario: str | None = None
+    prompt_dev_evidence: Path | None = None
 
 
 def _project_path(raw_path: str | Path | None) -> Path | None:
@@ -116,48 +58,37 @@ def _project_path(raw_path: str | Path | None) -> Path | None:
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
-def apply_scenario_defaults(args: argparse.Namespace) -> tuple[Scenario | None, list[str]]:
-    scenario = load_scenario(args.scenario) if args.scenario else None
+def apply_scenario_defaults(options: RunOptions) -> tuple[Scenario | None, list[str], str | None, bool]:
+    scenario = load_scenario(options.scenario) if options.scenario else None
     notes: list[str] = []
     if scenario is None:
-        return None, notes
+        return None, notes, None, options.demo
 
     notes.append(f"scenario: {scenario.name}")
     notes.append(f"scenario description: {scenario.description}")
 
-    if not args.demo and not args.live:
-        args.demo = scenario.mode == "demo"
-        args.live = scenario.mode == "live"
-    if args.dnscap_log_root is None:
-        args.dnscap_log_root = _project_path(scenario.dnscap_log_root)
-    if not args.threatsucker_config_set:
-        args.threatsucker_config_set = scenario.threatsucker_config_set
-    if not args.prompt_profile:
-        args.prompt_profile = scenario.prompt_profile
-    if scenario.include_demo_threat_intel:
-        args.include_demo_threat_intel = True
+    effective_demo = options.demo
+    if not options.demo and not options.live:
+        effective_demo = scenario.mode == "demo"
+    scenario_dnscap_log_root = str(_project_path(scenario.dnscap_log_root)) if scenario.dnscap_log_root else None
     if scenario.expected_findings:
         notes.append(f"scenario expected findings: {', '.join(scenario.expected_findings)}")
-    return scenario, notes
+    return scenario, notes, scenario_dnscap_log_root, effective_demo
 
 
-def configure_run_mode(args: argparse.Namespace) -> tuple[list[str], PromptProfile, LlmProfile, Scenario | None]:
+def configure_run_mode(options: RunOptions | None = None) -> tuple[list[str], PromptProfile, LlmProfile, Scenario | None]:
     """Set runner environment for the requested run path and return report notes."""
-    scenario, notes = apply_scenario_defaults(args)
-    prompt_profile = load_prompt_profile(args.prompt_profile)
-    llm_profile = load_llm_profile(args.llm_profile)
+    options = options or RunOptions()
+    scenario, notes, scenario_dnscap_log_root, effective_demo = apply_scenario_defaults(options)
+    prompt_profile_name = options.prompt_profile or (scenario.prompt_profile if scenario else None)
+    prompt_profile = load_prompt_profile(prompt_profile_name)
+    llm_profile = load_llm_profile(options.llm_profile)
     dnscap_module_dir = MODULES_ROOT / "dnscap"
     threatsucker_module_dir = MODULES_ROOT / "threatsucker"
     dnscap_config = load_module_runtime_config(dnscap_module_dir)
     threatsucker_config = load_module_runtime_config(threatsucker_module_dir)
 
     dnscap_updates: dict[str, str | None] = {}
-    if args.dnscap_period:
-        dnscap_updates["period"] = args.dnscap_period
-    if args.dnscap_start:
-        dnscap_updates["start"] = args.dnscap_start
-    if args.dnscap_end:
-        dnscap_updates["end"] = args.dnscap_end
     notes.append(f"prompt profile: {prompt_profile.name}")
     notes.append(f"LLM profile: {llm_profile.name}")
     notes.append(f"LLM model: {llm_profile.model}")
@@ -166,27 +97,24 @@ def configure_run_mode(args: argparse.Namespace) -> tuple[list[str], PromptProfi
     enabled_modules = os.environ.get("SCAN_ASSESS_ENABLED_MODULES", "").strip()
     notes.append(f"enabled modules: {enabled_modules if enabled_modules else 'all detected modules'}")
 
-    demo_threat_intel = args.demo or args.include_demo_threat_intel
-
-    if args.demo:
-        dnscap_updates["log_root"] = str(args.dnscap_log_root or DEMO_DNSCAP_LOG_ROOT)
+    if effective_demo:
+        dnscap_updates["log_root"] = str(scenario_dnscap_log_root or DEMO_DNSCAP_LOG_ROOT)
         threatsucker_config["include_demo_threat_intel"] = True
-        threatsucker_config.setdefault("config_set", "default")
+        threatsucker_config.setdefault("config_set", (scenario.threatsucker_config_set if scenario else None) or "default")
         notes.append("scan-assess mode: demo")
         notes.append(f"demo DNScap log root: {dnscap_updates['log_root']}")
         notes.append("demo ThreatSucker threat intel: enabled")
     else:
-        if args.dnscap_log_root:
-            dnscap_updates["log_root"] = str(args.dnscap_log_root)
-            notes.append(f"DNScap log root: {args.dnscap_log_root}")
-        threatsucker_config["include_demo_threat_intel"] = demo_threat_intel
+        if scenario_dnscap_log_root:
+            dnscap_updates["log_root"] = scenario_dnscap_log_root
+            notes.append(f"DNScap log root: {scenario_dnscap_log_root}")
+        threatsucker_config["include_demo_threat_intel"] = bool(scenario.include_demo_threat_intel) if scenario else False
+        if scenario and scenario.threatsucker_config_set:
+            threatsucker_config["config_set"] = scenario.threatsucker_config_set
         notes.append("scan-assess mode: live")
-        notes.append(f"demo ThreatSucker threat intel: {'enabled' if demo_threat_intel else 'disabled'}")
+        notes.append(f"demo ThreatSucker threat intel: {'enabled' if threatsucker_config['include_demo_threat_intel'] else 'disabled'}")
 
-    if args.threatsucker_config_set:
-        threatsucker_config["config_set"] = args.threatsucker_config_set
-        notes.append(f"ThreatSucker config set: {args.threatsucker_config_set}")
-    elif threatsucker_config.get("config_set"):
+    if threatsucker_config.get("config_set"):
         notes.append(f"ThreatSucker config set: {threatsucker_config['config_set']}")
 
     if dnscap_updates:
@@ -195,7 +123,7 @@ def configure_run_mode(args: argparse.Namespace) -> tuple[list[str], PromptProfi
     write_module_runtime_config(threatsucker_module_dir, threatsucker_config)
 
     dnscap_config = load_module_runtime_config(dnscap_module_dir)
-    dnscap_period = str(dnscap_config.get("period") or "forever")
+    dnscap_period = str(dnscap_config.get("period") or "all")
     notes.append(f"DNScap import period: {dnscap_period}")
     if dnscap_config.get("start"):
         notes.append(f"DNScap import start: {dnscap_config['start']}")
@@ -351,7 +279,7 @@ def save_run_manifest(
         "enabled_modules": [item for item in enabled_modules.split(",") if item] if enabled_modules else "all detected modules",
         "dnscap_import": {
             "log_root": dnscap_config.get("log_root"),
-            "period": dnscap_config.get("period", "forever"),
+            "period": dnscap_config.get("period", "all"),
             "start": dnscap_config.get("start"),
             "end": dnscap_config.get("end"),
         },
@@ -367,18 +295,18 @@ def save_run_manifest(
     return manifest_path
 
 
-def main() -> None:
-    args = parse_args()
-    run_notes, prompt_profile, llm_profile, scenario = configure_run_mode(args)
+def run_assessment(options: RunOptions | None = None) -> Path | None:
+    options = options or RunOptions()
+    run_notes, prompt_profile, llm_profile, scenario = configure_run_mode(options)
     machine_info = run_machine_info()
     ts = datetime.now(UTC)
     output_dir, report_dir = create_run_dirs(ts) # Create output and report directories
 
-    if args.prompt_dev_evidence:
-        payload_files = collect_prompt_developer_payload(args.prompt_dev_evidence, output_dir)
+    if options.prompt_dev_evidence:
+        payload_files = collect_prompt_developer_payload(options.prompt_dev_evidence, output_dir)
         runner_info = [
             "run purpose: validation",
-            f"prompt developer evidence payload: {args.prompt_dev_evidence}",
+            f"prompt developer evidence payload: {options.prompt_dev_evidence}",
         ]
     else:
         generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)
@@ -387,7 +315,7 @@ def main() -> None:
             for error in runner_errors:
                 print(f"- {error}")
             print("Stopping execution due to module runner errors.")
-            return
+            return None
         payload_files = collect_json_payload(generated_json_files, output_dir)
     report_body = analyze_with_llm(payload_files, prompt_profile, llm_profile)
     report_path = save_report(ts, report_dir, report_body, payload_files, [*run_notes, *runner_info], machine_info)
@@ -395,6 +323,11 @@ def main() -> None:
 
     print(f"\nReport saved to: {report_path}")
     print(f"Run manifest saved to: {manifest_path}")
+    return report_path
+
+
+def main(options: RunOptions | None = None) -> Path | None:
+    return run_assessment(options)
 
 
 if __name__ == "__main__":
