@@ -1,0 +1,25 @@
+{
+  "name": "full-validation",
+  "description": "Full validation suite with phishing DNS, outdated browser inventory, correlated threat intelligence, SafeSniff service noise, and substantial benign background noise.",
+  "background_noise": 30,
+  "module_tests": {
+    "dnscap": "actionable_issue",
+    "enumeros": "weak_issue",
+    "example_module": "nominal",
+    "safesniff": "actionable_issue",
+    "threatsucker": "actionable_issue"
+  },
+  "module_scopes": {
+    "dnscap": "observed_device",
+    "enumeros": "observed_device",
+    "safesniff": "observed_network",
+    "threatsucker": "module_default"
+  },
+  "expected_findings": [
+    "phishing or credential-theft DNS pattern on a network-observed device",
+    "browser patch gap or known exploited Chrome vulnerability",
+    "distinguish local evidence from non-local observed endpoint evidence",
+    "SafeSniff high-risk exposed services are network-observed devices",
+    "ignore or de-prioritise benign generated background noise"
+  ]
+}

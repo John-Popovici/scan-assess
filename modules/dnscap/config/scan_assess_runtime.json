@@ -1,0 +1,5 @@
+{
+  "log_root": "sample_logs",
+  "period": "forever",
+  "use_last_run_marker": false
+}

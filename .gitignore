@@ -9,6 +9,10 @@ wheels/
 modules/.DS_Store
 modules/Archive.zip
 
+# Rust build outputs from imported multi-platform collectors
+target/
+modules/*/source/target/
+
 # Virtual environments
 .venv
 

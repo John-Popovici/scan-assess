@@ -5,3 +5,4 @@ DocuSign
 Stripe
 BGL BNP Paribas
 POST Luxembourg
+SharePoint

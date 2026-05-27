@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from src.runners.base_runner import BaseRunner
+from src.module_config import load_module_runtime_config
 
 
 DNS_HEADERS = [
@@ -118,9 +119,11 @@ class Runner(BaseRunner):
     """Run ThreatSucker's explainable threat-intel correlation pipeline."""
 
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
+        config = load_module_runtime_config(module_dir)
         source_root = module_dir / "source"
         work_root = output_dir / "workspace"
-        include_demo_intel = os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", "").strip().lower() in {"1", "true", "yes"}
+        include_demo_raw = config.get("include_demo_threat_intel", os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", ""))
+        include_demo_intel = str(include_demo_raw).strip().lower() in {"1", "true", "yes"}
         _copy_work_tree(source_root, work_root, include_demo_intel=include_demo_intel)
 
         package_root = work_root / "src"
@@ -137,7 +140,7 @@ class Runner(BaseRunner):
         run_root = output_dir.parent
         paths = ProjectPaths.discover(work_root)
         ensure_default_config_set(paths)
-        config_set = os.environ.get("SCAN_ASSESS_THREATSUCKER_CONFIG_SET", "").strip()
+        config_set = str(config.get("config_set") or os.environ.get("SCAN_ASSESS_THREATSUCKER_CONFIG_SET", "")).strip()
         if config_set:
             apply_config_set(paths, config_set)
 
@@ -162,6 +165,7 @@ class Runner(BaseRunner):
         scored_dir = paths.scored_date_dir()
         agent_dir = paths.agent_context_dir / "current"
         relevant_indicators = _read_jsonl(scored_dir / "relevant_indicators.jsonl")
+        relevant_vulnerabilities = _read_jsonl(scored_dir / "relevant_vulnerabilities.jsonl")
         top_threats = json.loads((agent_dir / "top_threats.json").read_text(encoding="utf-8"))
         dns_matches = [
             item for item in relevant_indicators
@@ -174,6 +178,14 @@ class Runner(BaseRunner):
         ]
         high_or_critical = [
             item for item in relevant_indicators
+            if item.get("priority") in {"critical", "high"} or int(item.get("score", 0)) >= 70
+        ]
+        critical_vulnerabilities = [
+            item for item in relevant_vulnerabilities
+            if item.get("priority") == "critical" or int(item.get("score", 0)) >= 90
+        ]
+        high_or_critical_vulnerabilities = [
+            item for item in relevant_vulnerabilities
             if item.get("priority") in {"critical", "high"} or int(item.get("score", 0)) >= 70
         ]
 
@@ -196,11 +208,16 @@ class Runner(BaseRunner):
                 "scored_indicators": len(scored_indicators),
                 "scored_vulnerabilities": len(scored_vulns),
                 "relevant_indicators": len(relevant_indicators),
+                "relevant_vulnerabilities": len(relevant_vulnerabilities),
                 "dns_matches": len(dns_matches),
                 "critical_items": len(critical_items),
                 "high_or_critical_items": len(high_or_critical),
+                "critical_vulnerabilities": len(critical_vulnerabilities),
+                "high_or_critical_vulnerabilities": len(high_or_critical_vulnerabilities),
             },
             "critical_items": critical_items[:10],
+            "critical_vulnerabilities": critical_vulnerabilities[:10],
+            "relevant_vulnerabilities": relevant_vulnerabilities[:20],
             "top_threats": top_threats[:10],
             "dns_matches": dns_matches[:20],
             "outputs": {

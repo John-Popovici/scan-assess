@@ -42,7 +42,45 @@ Official run with real DNScap logs:
 uv run python -m src.scan_assess --live --dnscap-log-root /path/to/dnscap/logs
 ```
 
+Select a model endpoint/profile:
+
+```bash
+uv run python -m src.scan_assess --live --llm-profile local-llamacpp
+```
+
 Reports are written to `reports/`. Module outputs are written to `outputs/`.
+
+## Run The GUI Workbench
+
+```bash
+uv run python -m src.gui_app
+```
+
+Open:
+
+```text
+http://127.0.0.1:8088
+```
+
+The GUI workbench provides assessment launching, output location preview, prompt-profile editing, prompt validation, LLM-profile selection, detected-module enable/disable switches, a first-class Reports view, report-to-evidence links, and a module-folder Evidence browser with beautified JSON/JSONL/text viewing.
+
+Prompt experiments live in the **Prompt Developer** tab. That view puts the selected scenario, system prompt, user prompt, validation, per-module test choices, editable evidence payload, and the run-again button on the same screen. Module choices regenerate the JSON payload, and you can edit the JSON directly afterwards. `Run Prompt Check` uses that edited evidence directly, without sending scenario names or expected-findings labels to the LLM.
+
+The left sidebar keeps assessment setup folded away by default. Open **Run setup** to choose or edit the prompt profile and LLM profile, including the model name, OpenAI-compatible base URL, API-key environment variable, and description.
+
+When a run completes, module evidence appears under:
+
+```text
+outputs/<run>/<module>/
+```
+
+The matching Markdown report appears under:
+
+```text
+reports/security_report_<run>.md
+```
+
+Prompt profiles live in `config/prompt_profiles/`. Scenario packs live in `config/scenarios/`. LLM profiles live in `config/llm_profiles/`.
 
 ## Imported Modules
 

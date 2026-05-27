@@ -1,0 +1,15 @@
+{
+  "profile": "luxembourg_ngo",
+  "generated": "2026-05-27T08:28:02.134905+00:00",
+  "raw_paths": [
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/misp/critical_dns_match_campaign.json",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/misp/demo_invoice_fraud_event.json",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/misp/local_misp_dns_hit.json",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/misp/misp_event_sample.json",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/phishtank/phishtank_lookup_sample.json",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/urlhaus/urlhaus_sample.jsonl",
+    "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/raw/vulnerability_lookup/vulnerability_lookup_sample.jsonl"
+  ],
+  "normalized_indicators": "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/normalized/2026/05/27/indicators.jsonl",
+  "normalized_vulnerabilities": "/Users/user/codeprojects/scan-assess-gui/modules/threatsucker/source/data/normalized/2026/05/27/vulnerabilities.jsonl"
+}

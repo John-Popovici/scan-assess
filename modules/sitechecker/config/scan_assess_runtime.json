@@ -1,0 +1,12 @@
+{
+  "check_cookie_flags": true,
+  "check_interesting_paths": true,
+  "check_security_headers": true,
+  "check_versions": true,
+  "crawl_delay_seconds": 0.25,
+  "crawl_same_site": true,
+  "enabled": true,
+  "max_pages": 10,
+  "request_timeout_seconds": 10,
+  "target_url": "https://www.eastlondonaudio.com"
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 from typing import cast
 
@@ -52,12 +53,23 @@ def run_modules(modules_dir: Path, output_dir: Path) -> tuple[list[Path], list[s
     generated_json_files: list[Path] = []
     info: list[str] = []
     errors: list[str] = []
+    enabled_raw = os.environ.get("SCAN_ASSESS_ENABLED_MODULES", "").strip()
+    disabled_raw = os.environ.get("SCAN_ASSESS_DISABLED_MODULES", "").strip()
+    enabled_modules = {item.strip() for item in enabled_raw.split(",") if item.strip()}
+    disabled_modules = {item.strip() for item in disabled_raw.split(",") if item.strip()}
 
     # Discover modules.
     runner_classes = _load_modules(modules_dir)
 
     # Iterate through each module
     for runner_class, module_dir in runner_classes:
+        if enabled_modules and module_dir.name not in enabled_modules:
+            info.append(f"{module_dir.name}: disabled by module selection.")
+            continue
+        if module_dir.name in disabled_modules:
+            info.append(f"{module_dir.name}: disabled by module selection.")
+            continue
+
         module_output_dir = output_dir / module_dir.name
         module_output_dir.mkdir(parents=True, exist_ok=True)
 
