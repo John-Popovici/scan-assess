@@ -234,11 +234,3 @@ def run_assessment(*, demo: bool = False) -> Path | None:
 
     print(f"\nReport saved to: {report_path}")
     return report_path
-
-
-def main() -> None:
-    run_assessment()
-
-
-if __name__ == "__main__":
-    main()
