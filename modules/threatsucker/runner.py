@@ -85,6 +85,15 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _config_bool(config: dict[str, Any], key: str, default: bool = False) -> bool:
+    value = config.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 def _copy_work_tree(source_root: Path, work_root: Path, include_demo_intel: bool = False) -> None:
     ignored_patterns = [
         ".git",
@@ -122,11 +131,11 @@ class Runner(BaseRunner):
         config = load_module_runtime_config(module_dir)
         source_root = module_dir / "source"
         work_root = output_dir / "workspace"
-        include_demo_intel = bool(
-            config.get(
-                "include_demo_threat_intel",
-                os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", "").strip().lower() in {"1", "true", "yes"},
-            )
+        demo = _config_bool(config, "demo")
+        include_demo_intel = demo or _config_bool(
+            config,
+            "include_demo_threat_intel",
+            os.environ.get("SCAN_ASSESS_INCLUDE_DEMO_THREAT_INTEL", "").strip().lower() in {"1", "true", "yes"},
         )
         _copy_work_tree(source_root, work_root, include_demo_intel=include_demo_intel)
 
@@ -191,6 +200,7 @@ class Runner(BaseRunner):
                 "data_origin": "derived",
                 "collection_method": "threat_intel_scoring_against_scan_assess_outputs",
                 "config_set": config_set or "active_source_config",
+                "demo": demo,
                 "demo_threat_intel_included": include_demo_intel,
                 "live_collection": False,
                 "sample_data": False,
