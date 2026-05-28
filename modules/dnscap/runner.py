@@ -47,6 +47,9 @@ PERIOD_ALIASES = {
     "time_period": "custom",
 }
 
+DEMO_LOG_ROOT = "imported_logs"
+DEFAULT_LOG_ROOT = "sample_logs"
+
 COLLECTOR_BINARY_BY_PLATFORM = {
     ("darwin", "arm64"): "dnslog-agent-aarch64-apple-darwin",
     ("darwin", "aarch64"): "dnslog-agent-aarch64-apple-darwin",
@@ -130,6 +133,25 @@ def _config_value(config: dict, key: str, default: str | None = None) -> str | N
     if value not in (None, ""):
         return str(value)
     return default
+
+
+def _config_bool(config: dict, key: str, default: bool = False) -> bool:
+    value = config.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def _resolve_log_root(config: dict, module_dir: Path) -> tuple[bool, Path]:
+    demo = _config_bool(config, "demo")
+    root_key = "demo_log_root" if demo else "log_root"
+    default_root = DEMO_LOG_ROOT if demo else DEFAULT_LOG_ROOT
+    log_root = Path(_config_value(config, root_key, default_root) or default_root)
+    if not log_root.is_absolute():
+        log_root = module_dir / log_root
+    return demo, log_root
 
 
 def _normalise_period(value: object) -> str:
@@ -231,12 +253,13 @@ def _summary(
     period: str,
     start: datetime | None,
     end: datetime | None,
+    demo: bool,
 ) -> dict:
     qnames = Counter(str(event.get("qname", "")).lower() for event in events if event.get("qname"))
     qtypes = Counter(str(event.get("qtype", "")).upper() for event in events if event.get("qtype"))
     hosts = Counter(str(event.get("host", "")) for event in events if event.get("host"))
     sample_root = module_dir / "sample_logs"
-    data_origin = "sample" if root.resolve() == sample_root.resolve() else "imported"
+    data_origin = "demo" if demo else "sample" if root.resolve() == sample_root.resolve() else "imported"
 
     return {
         "tool": "dnscap",
@@ -246,13 +269,16 @@ def _summary(
             "collection_method": "log_import",
             "live_collection": False,
             "source_root": str(root),
+            "demo": demo,
             "import_period": period,
             "window_start_utc": start.isoformat() if start else None,
             "window_end_utc": end.isoformat() if end else None,
             "last_run_marker_enabled": False,
-            "sample_data": data_origin == "sample",
+            "sample_data": data_origin in {"demo", "sample"},
             "note": (
-                "Bundled sample DNScap logs for parser/report testing; do not treat as live user activity."
+                "Bundled demo DNScap logs for parser/report testing; do not treat as live user activity."
+                if data_origin == "demo"
+                else "Bundled sample DNScap logs for parser/report testing; do not treat as live user activity."
                 if data_origin == "sample"
                 else "Imported DNScap logs; treat as historical DNS observation telemetry, not proof of compromise."
             ),
@@ -398,9 +424,7 @@ class Runner(BaseRunner):
 
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         config = load_module_runtime_config(module_dir)
-        log_root = Path(_config_value(config, "log_root", "sample_logs") or "sample_logs")
-        if not log_root.is_absolute():
-            log_root = module_dir / log_root
+        demo, log_root = _resolve_log_root(config, module_dir)
         if not log_root.exists():
             raise FileNotFoundError(f"DNScap log root not found: {log_root}")
 
@@ -408,8 +432,11 @@ class Runner(BaseRunner):
         all_events = _load_dns_events(dns_files)
         period, start, end = _import_window(config)
         events, missing_ts_count = _filter_events_by_window(all_events, start, end)
-        data = _summary(events, len(all_events), missing_ts_count, dns_files, log_root, module_dir, period, start, end)
-        marker_enabled = bool(config.get("update_last_run_marker", config.get("use_last_run_marker", False))) or period == "since_last_scan"
+        data = _summary(events, len(all_events), missing_ts_count, dns_files, log_root, module_dir, period, start, end, demo)
+        marker_enabled = (not demo) and (
+            bool(config.get("update_last_run_marker", config.get("use_last_run_marker", False)))
+            or period == "since_last_scan"
+        )
         data["provenance"]["last_run_marker_enabled"] = marker_enabled
         data["provenance"]["previous_last_run_utc"] = config.get("last_run_utc")
         data["collector"] = _collector_binary_inventory(module_dir, _config_value(config, "collector_binary"))

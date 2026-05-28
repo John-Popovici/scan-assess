@@ -5,6 +5,8 @@
   "check_versions": true,
   "crawl_delay_seconds": 0.25,
   "crawl_same_site": true,
+  "demo": false,
+  "demo_output": "demo_output.json",
   "enabled": true,
   "max_pages": 10,
   "request_timeout_seconds": 10,

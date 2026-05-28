@@ -1224,7 +1224,7 @@ wheels = [
 ]
 
 [[package]]
-name = "scan-assess"
+name = "scan-assess-gui"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
