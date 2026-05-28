@@ -10,7 +10,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 from src.runners.run_modules import run_modules
 from src.llm_profiles import LlmProfile, load_llm_profile
-from src.module_config import load_module_runtime_config, write_module_runtime_config
+from src.module_config import load_module_runtime_config, module_runtime_config_path
 from src.prompt_profiles import PromptProfile, load_prompt_profile
 from src.scenarios import Scenario, load_scenario
 
@@ -21,9 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODULES_ROOT = PROJECT_ROOT / "modules"
 OUTPUTS_ROOT = PROJECT_ROOT / "outputs"
 REPORTS_ROOT = PROJECT_ROOT / "reports"
-DEMO_DNSCAP_LOG_ROOT = MODULES_ROOT / "dnscap" / "imported_logs"
 LOCAL_TZ = ZoneInfo("Europe/Luxembourg")
-MODULE_RUNTIME_CONFIG_MODULES = {"dnscap", "enumeros", "safesniff", "sitechecker", "threatsucker"}
 
 
 def run_machine_info() -> dict[str, str]:
@@ -52,28 +50,21 @@ class RunOptions:
     prompt_dev_evidence: Path | None = None
 
 
-def _project_path(raw_path: str | Path | None) -> Path | None:
-    if raw_path in (None, ""):
-        return None
-    path = Path(raw_path)
-    return path if path.is_absolute() else PROJECT_ROOT / path
-
-
 def _runtime_configured_module_dirs() -> list[Path]:
     if not MODULES_ROOT.exists():
         return []
     return [
         module_dir
         for module_dir in sorted(MODULES_ROOT.iterdir())
-        if module_dir.is_dir() and module_dir.name in MODULE_RUNTIME_CONFIG_MODULES
+        if module_dir.is_dir() and module_runtime_config_path(module_dir).exists()
     ]
 
 
-def apply_scenario_defaults(options: RunOptions) -> tuple[Scenario | None, list[str], str | None, bool]:
+def apply_scenario_defaults(options: RunOptions) -> tuple[Scenario | None, list[str], bool]:
     scenario = load_scenario(options.scenario) if options.scenario else None
     notes: list[str] = []
     if scenario is None:
-        return None, notes, None, options.demo
+        return None, notes, options.demo
 
     notes.append(f"scenario: {scenario.name}")
     notes.append(f"scenario description: {scenario.description}")
@@ -81,25 +72,19 @@ def apply_scenario_defaults(options: RunOptions) -> tuple[Scenario | None, list[
     effective_demo = options.demo
     if not options.demo and not options.live:
         effective_demo = scenario.mode == "demo"
-    scenario_dnscap_log_root = str(_project_path(scenario.dnscap_log_root)) if scenario.dnscap_log_root else None
     if scenario.expected_findings:
         notes.append(f"scenario expected findings: {', '.join(scenario.expected_findings)}")
-    return scenario, notes, scenario_dnscap_log_root, effective_demo
+    return scenario, notes, effective_demo
 
 
-def configure_run_mode(options: RunOptions | None = None) -> tuple[list[str], PromptProfile, LlmProfile, Scenario | None]:
+def configure_run_mode(options: RunOptions | None = None) -> tuple[list[str], PromptProfile, LlmProfile, Scenario | None, bool]:
     """Set runner environment for the requested run path and return report notes."""
     options = options or RunOptions()
-    scenario, notes, scenario_dnscap_log_root, effective_demo = apply_scenario_defaults(options)
+    scenario, notes, effective_demo = apply_scenario_defaults(options)
     prompt_profile_name = options.prompt_profile or (scenario.prompt_profile if scenario else None)
     prompt_profile = load_prompt_profile(prompt_profile_name)
     llm_profile = load_llm_profile(options.llm_profile)
-    dnscap_module_dir = MODULES_ROOT / "dnscap"
-    threatsucker_module_dir = MODULES_ROOT / "threatsucker"
-    dnscap_config = load_module_runtime_config(dnscap_module_dir)
-    threatsucker_config = load_module_runtime_config(threatsucker_module_dir)
 
-    dnscap_updates: dict[str, str | None] = {}
     notes.append(f"prompt profile: {prompt_profile.name}")
     notes.append(f"LLM profile: {llm_profile.name}")
     notes.append(f"LLM model: {llm_profile.model}")
@@ -109,49 +94,19 @@ def configure_run_mode(options: RunOptions | None = None) -> tuple[list[str], Pr
     notes.append(f"enabled modules: {enabled_modules if enabled_modules else 'all detected modules'}")
 
     if effective_demo:
-        if scenario_dnscap_log_root:
-            dnscap_updates["demo_log_root"] = str(scenario_dnscap_log_root)
-        threatsucker_config["include_demo_threat_intel"] = True
-        threatsucker_config["demo"] = True
-        threatsucker_config.setdefault("config_set", (scenario.threatsucker_config_set if scenario else None) or "default")
         notes.append("scan-assess mode: demo")
         notes.append("module demo config: enabled")
-        notes.append("demo ThreatSucker threat intel: enabled")
     else:
-        if scenario_dnscap_log_root:
-            dnscap_updates["log_root"] = scenario_dnscap_log_root
-            notes.append(f"DNScap log root: {scenario_dnscap_log_root}")
-        threatsucker_config["demo"] = False
-        threatsucker_config["include_demo_threat_intel"] = bool(scenario.include_demo_threat_intel) if scenario else False
-        if scenario and scenario.threatsucker_config_set:
-            threatsucker_config["config_set"] = scenario.threatsucker_config_set
         notes.append("scan-assess mode: live")
         notes.append("module demo config: disabled")
-        notes.append(f"demo ThreatSucker threat intel: {'enabled' if threatsucker_config['include_demo_threat_intel'] else 'disabled'}")
 
-    dnscap_config["demo"] = effective_demo
-    if threatsucker_config.get("config_set"):
-        notes.append(f"ThreatSucker config set: {threatsucker_config['config_set']}")
+    runtime_config_modules = [path.name for path in _runtime_configured_module_dirs()]
+    notes.append(
+        "runtime-configured modules: "
+        + (", ".join(runtime_config_modules) if runtime_config_modules else "none")
+    )
 
-    for module_dir in _runtime_configured_module_dirs():
-        if module_dir.name not in {"dnscap", "threatsucker"}:
-            write_module_runtime_config(module_dir, {"demo": effective_demo})
-    if dnscap_updates:
-        dnscap_config.update(dnscap_updates)
-    write_module_runtime_config(dnscap_module_dir, dnscap_config)
-    write_module_runtime_config(threatsucker_module_dir, threatsucker_config)
-
-    dnscap_config = load_module_runtime_config(dnscap_module_dir)
-    dnscap_period = str(dnscap_config.get("period") or "all")
-    notes.append(f"DNScap import period: {dnscap_period}")
-    if dnscap_config.get("start"):
-        notes.append(f"DNScap import start: {dnscap_config['start']}")
-    if dnscap_config.get("end"):
-        notes.append(f"DNScap import end: {dnscap_config['end']}")
-    if dnscap_config.get("log_root"):
-        notes.append(f"DNScap log root: {dnscap_config['log_root']}")
-
-    return notes, prompt_profile, llm_profile, scenario
+    return notes, prompt_profile, llm_profile, scenario, effective_demo
 
 
 def create_run_dirs(ts: datetime) -> tuple[Path, Path]:
@@ -281,8 +236,10 @@ def save_run_manifest(
 ) -> Path:
     manifest_path = output_dir / "run_manifest.json"
     enabled_modules = os.environ.get("SCAN_ASSESS_ENABLED_MODULES", "").strip()
-    dnscap_config = load_module_runtime_config(MODULES_ROOT / "dnscap")
-    threatsucker_config = load_module_runtime_config(MODULES_ROOT / "threatsucker")
+    module_runtime_config = {
+        module_dir.name: load_module_runtime_config(module_dir)
+        for module_dir in _runtime_configured_module_dirs()
+    }
     manifest = {
         "report_path": str(report_path),
         "generated_at_utc": ts.isoformat(),
@@ -296,16 +253,7 @@ def save_run_manifest(
         "llm_context_size": llm_profile.context_size,
         "scenario": scenario.name if scenario else None,
         "enabled_modules": [item for item in enabled_modules.split(",") if item] if enabled_modules else "all detected modules",
-        "dnscap_import": {
-            "log_root": dnscap_config.get("log_root"),
-            "period": dnscap_config.get("period", "all"),
-            "start": dnscap_config.get("start"),
-            "end": dnscap_config.get("end"),
-        },
-        "threatsucker_config": {
-            "config_set": threatsucker_config.get("config_set"),
-            "include_demo_threat_intel": threatsucker_config.get("include_demo_threat_intel"),
-        },
+        "module_runtime_config": module_runtime_config,
         "run_machine": machine_info,
         "module_runner_information": info,
         "input_files": [item["filename"] for item in files],
@@ -316,7 +264,7 @@ def save_run_manifest(
 
 def run_assessment(options: RunOptions | None = None) -> Path | None:
     options = options or RunOptions()
-    run_notes, prompt_profile, llm_profile, scenario = configure_run_mode(options)
+    run_notes, prompt_profile, llm_profile, scenario, effective_demo = configure_run_mode(options)
     machine_info = run_machine_info()
     ts = datetime.now(UTC)
     output_dir, report_dir = create_run_dirs(ts) # Create output and report directories
@@ -328,7 +276,11 @@ def run_assessment(options: RunOptions | None = None) -> Path | None:
             f"prompt developer telemetry payload: {options.prompt_dev_evidence}",
         ]
     else:
-        generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)
+        generated_json_files, runner_info, runner_errors = run_modules(
+            MODULES_ROOT,
+            output_dir,
+            generic_overrides={"demo": effective_demo},
+        )
         if runner_errors:
             print("\nModule Runner Errors:")
             for error in runner_errors:

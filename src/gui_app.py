@@ -326,6 +326,29 @@ def _latest_report_text(validation_only: bool = False) -> str:
     return reports[0].read_text(encoding="utf-8")
 
 
+def _manifest_runtime_config_markdown(manifest: dict[str, Any]) -> str:
+    runtime_config = manifest.get("module_runtime_config")
+    if not isinstance(runtime_config, dict):
+        legacy_config: dict[str, Any] = {}
+        if isinstance(manifest.get("dnscap_import"), dict):
+            legacy_config["dnscap"] = manifest["dnscap_import"]
+        if isinstance(manifest.get("threatsucker_config"), dict):
+            legacy_config["threatsucker"] = manifest["threatsucker_config"]
+        runtime_config = legacy_config
+    if not runtime_config:
+        return "**Runtime configs:** `not recorded`"
+
+    lines = ["**Runtime configs:**"]
+    for module_name, config in sorted(runtime_config.items()):
+        if not isinstance(config, dict):
+            continue
+        compact = json.dumps(config, sort_keys=True)
+        if len(compact) > 220:
+            compact = compact[:217] + "..."
+        lines.append(f"- `{module_name}`: `{compact}`")
+    return "\n".join(lines) if len(lines) > 1 else "**Runtime configs:** `not recorded`"
+
+
 def _parse_run_datetime(value: str) -> datetime | None:
     try:
         return datetime.strptime(value, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=UTC)
@@ -1871,13 +1894,6 @@ def main_page() -> None:
                                     run_machine = {}
                                 run_machine_label = str(run_machine.get("hostname") or "not recorded")
                                 run_platform_label = str(run_machine.get("platform") or "not recorded")
-                                dnscap_import = manifest.get("dnscap_import", {})
-                                if not isinstance(dnscap_import, dict):
-                                    dnscap_import = {}
-                                dnscap_root = dnscap_import.get("log_root") or "default"
-                                dnscap_window = dnscap_import.get("period") or "all"
-                                if dnscap_import.get("start") or dnscap_import.get("end"):
-                                    dnscap_window = f"{dnscap_window}: {dnscap_import.get('start') or 'beginning'} to {dnscap_import.get('end') or 'now'}"
                                 generated_local = manifest.get("generated_at_local") or (_european_datetime_label(run_name) if run_name else "not recorded")
                                 primary_files, supporting_files = _report_context_files(run_name, report_text)
                                 report_view.content = report_text
@@ -1888,9 +1904,8 @@ def main_page() -> None:
                                     f"**Run machine:** `{run_machine_label}`\n\n"
                                     f"**Platform:** `{run_platform_label}`\n\n"
                                     f"**Prompt:** `{manifest.get('prompt_profile', 'unknown')}`\n\n"
-                                    f"**DNScap folder:** `{dnscap_root}`\n\n"
-                                    f"**DNScap period:** `{dnscap_window}`\n\n"
-                                    f"**LLM:** `{manifest.get('llm_model', 'unknown')}` at `{manifest.get('llm_base_url', 'unknown')}`"
+                                    f"**LLM:** `{manifest.get('llm_model', 'unknown')}` at `{manifest.get('llm_base_url', 'unknown')}`\n\n"
+                                    f"{_manifest_runtime_config_markdown(manifest)}"
                                 )
                                 report_context_actions.clear()
                                 with report_context_actions:

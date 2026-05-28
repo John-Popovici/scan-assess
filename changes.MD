@@ -161,4 +161,6 @@ All imported Rust-based tools are treated as multi-platform collectors.
 - Added LLM profile context-size settings and local llama.cpp launch metadata, including model path, server binary, host, and port.
 - Added LLM Setup controls to start/stop a GUI-launched local llama.cpp server and show endpoint health.
 - Added a Validation context estimate that compares the selected prompt/evidence mix against the active LLM profile's configured context size and blocks runs that are predictably too large.
+- Removed the GUI run-path whitelist of specific runtime-configured modules. Assessment runs now discover modules that expose `config/scan_assess_runtime.json` and apply generic run-mode config such as `demo` through the module runner layer, so each module owns what demo telemetry means.
+- Updated run manifests and the Reports context panel to show a generic per-module runtime-config snapshot instead of hardcoded DNScap/ThreatSucker metadata fields.
 - Added `docs/GUI_PLAN.md` to capture the GUI workbench direction and next slice.
