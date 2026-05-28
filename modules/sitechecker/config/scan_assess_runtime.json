@@ -1,4 +1,6 @@
 {
+  "demo": false,
+  "demo_output": "demo_output.json",
   "enabled": true,
   "target_url": "https://eastlondonaudio.com",
   "max_pages": 10,

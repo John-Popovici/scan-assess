@@ -1,0 +1,69 @@
+{
+  "tool": "safesniff",
+  "mode": "permissioned_safe_tcp_enumeration",
+  "metadata": {
+    "schema_version": "1.1",
+    "generated_by": "safesniff",
+    "scanner_hostname": "demo-scanner-01",
+    "scan_profile": "light",
+    "tested_host_count": 4,
+    "tested_port_count": 8,
+    "total_tcp_connect_attempts_planned": 32
+  },
+  "profile": "light",
+  "target": "192.0.2.0/29",
+  "device_inventory": {
+    "observed_device_count": 3,
+    "active_with_open_services": 2,
+    "active_without_open_services": 1,
+    "inactive_address_count": 1,
+    "devices": [
+      {
+        "ip": "192.0.2.1",
+        "label": "demo-gateway",
+        "likely_role": "router_or_gateway",
+        "exposure_level": "medium",
+        "open_ports": [53, 80, 443],
+        "service_names": ["dns", "http", "https"],
+        "security_review_priority": "medium",
+        "risk_tags": ["network_or_discovery_surface", "web_admin_or_app_surface"]
+      },
+      {
+        "ip": "192.0.2.20",
+        "label": "demo-fileserver",
+        "likely_role": "windows_workstation_or_file_sharing_host",
+        "exposure_level": "high",
+        "open_ports": [135, 139, 445],
+        "service_names": ["msrpc", "netbios", "smb"],
+        "security_review_priority": "high",
+        "risk_tags": ["file_sharing_or_rpc_surface"]
+      },
+      {
+        "ip": "192.0.2.40",
+        "label": "demo-tablet",
+        "likely_role": "mobile_device",
+        "exposure_level": "minimal",
+        "open_ports": [],
+        "service_names": [],
+        "security_review_priority": "informational",
+        "risk_tags": []
+      }
+    ]
+  },
+  "summary": {
+    "overall": "warnings",
+    "active_hosts": 3,
+    "inactive_or_unobserved_hosts": 1,
+    "hosts_with_open_services": 2,
+    "open_service_count": 6,
+    "high_count": 3,
+    "medium_count": 2
+  },
+  "safety": {
+    "exploit_checks": false,
+    "credential_attempts": false,
+    "bruteforce": false,
+    "persistence": false,
+    "packet_capture": false
+  }
+}

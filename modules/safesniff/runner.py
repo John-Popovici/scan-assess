@@ -8,6 +8,7 @@ import platform
 import subprocess
 from pathlib import Path
 
+from src.module_config import load_module_runtime_config
 from src.runners.base_runner import BaseRunner
 
 
@@ -27,10 +28,47 @@ def _binary_name() -> str:
     raise RuntimeError(f"Unsupported SafeSniff platform: {platform.system()} {platform.machine()}")
 
 
+def _config_bool(config: dict, key: str, default: bool = False) -> bool:
+    value = config.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def _config_path(module_dir: Path, config: dict, key: str, default: str) -> Path:
+    value = str(config.get(key) or default)
+    path = Path(value)
+    return path if path.is_absolute() else module_dir / path
+
+
 class Runner(BaseRunner):
     """Run SafeSniff with conservative defaults and store JSON output."""
 
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
+        config = load_module_runtime_config(module_dir)
+        if _config_bool(config, "demo"):
+            fixture_path = _config_path(module_dir, config, "demo_output", "demo_output.json")
+            if not fixture_path.exists():
+                raise FileNotFoundError(f"SafeSniff demo fixture not found: {fixture_path}")
+            data = json.loads(fixture_path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise RuntimeError("SafeSniff demo fixture must contain a JSON object.")
+            data["provenance"] = {
+                "data_origin": "demo",
+                "collection_method": "module_owned_demo_fixture",
+                "live_collection": False,
+                "active_network_scan": False,
+                "fixture": str(fixture_path),
+                "sample_data": True,
+                "demo": True,
+                "note": "Bundled SafeSniff demonstration network telemetry; no live target detection or TCP scan was performed.",
+            }
+            output_path = output_dir / "safesniff.json"
+            output_path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+            return True, [output_path]
+
         binary = Path(os.environ.get("SCAN_ASSESS_SAFESNIFF_BIN", module_dir / "bin" / _binary_name()))
         timeout = int(os.environ.get("SCAN_ASSESS_SAFESNIFF_TIMEOUT", "180"))
         mode = os.environ.get("SCAN_ASSESS_SAFESNIFF_MODE", "detect").strip().lower()
@@ -75,6 +113,7 @@ class Runner(BaseRunner):
             "active_network_scan": mode == "scan",
             "binary": str(binary) if binary.exists() else "cargo run from vendored source",
             "sample_data": False,
+            "demo": False,
             "note": (
                 "Live target detection only; no TCP service scan was performed."
                 if mode == "detect"
