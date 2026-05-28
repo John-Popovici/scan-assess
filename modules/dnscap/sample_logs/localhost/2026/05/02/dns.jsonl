@@ -1,0 +1,3 @@
+{"ts":"2026-05-02T10:31:22.123Z","host":"laptop-01","os":"macos","interface":"en0","src_ip":"192.0.2.44","dst_ip":"1.1.1.1","src_port":55321,"dst_port":53,"proto":"udp","qname":"example.com","qtype":"A"}
+{"ts":"2026-05-02T10:31:23.221Z","host":"laptop-01","os":"macos","interface":"en0","src_ip":"192.0.2.44","dst_ip":"1.1.1.1","src_port":55322,"dst_port":53,"proto":"udp","qname":"openai.com","qtype":"AAAA"}
+{"ts":"2026-05-02T10:31:24.117Z","host":"laptop-01","os":"macos","interface":"en0","src_ip":"192.0.2.44","dst_ip":"8.8.8.8","src_port":55323,"dst_port":53,"proto":"udp","qname":"cloudflare.com","qtype":"A"}

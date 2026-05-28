@@ -1,0 +1,5 @@
+{
+  "config_set": "default",
+  "demo": false,
+  "include_demo_threat_intel": false
+}

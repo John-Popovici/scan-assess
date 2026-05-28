@@ -5,6 +5,17 @@ build/
 dist/
 wheels/
 *.egg-info
+.DS_Store
+modules/.DS_Store
+modules/Archive.zip
+
+# Rust build outputs from imported multi-platform collectors
+target/
+modules/*/source/target/
+modules/threatsucker/source/data/mini/current/
+modules/threatsucker/source/data/normalized/
+modules/threatsucker/source/data/scored/
+modules/threatsucker/source/data/agent_context/current/
 
 # Virtual environments
 .venv

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "module": "safesniff",
+  "condition": "background_30",
+  "scope": "module_default",
+  "purpose": "background validation telemetry",
+  "files": [
+    {
+      "filename": "safesniff/permitted_service_inventory.json",
+      "file_data": {
+        "module": "safesniff",
+        "mode": "permissioned_safe_tcp_enumeration",
+        "provenance": {
+          "active_network_scan": true,
+          "sample_data": false
+        },
+        "asset_context": {
+          "device_scope": "observed_network",
+          "is_local_host": false,
+          "observed_by": "office-network-sensor-01"
+        },
+        "hosts": [
+          {
+            "ip": "10.40.12.10",
+            "services": [
+              {
+                "port": 443,
+                "service": "https",
+                "severity": "info",
+                "encryption": "tls"
+              }
+            ]
+          },
+          {
+            "ip": "10.40.12.11",
+            "services": [
+              {
+                "port": 53,
+                "service": "dns",
+                "severity": "info"
+              }
+            ]
+          }
+        ],
+        "summary": {
+          "overall": "ok",
+          "high_count": 0,
+          "medium_count": 0
+        }
+      }
+    }
+  ]
+}

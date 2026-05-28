@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "module": "threatsucker",
+  "description": "Validation telemetry options for threat-intelligence reduction and local-context correlation.",
+  "generation": {
+    "positive_telemetry": "runner.py:Runner.generate_validation_evidence"
+  },
+  "validation": {
+    "conditions": {
+      "off": "Off",
+      "nominal": "Nominal: no relevant correlation",
+      "weak_issue": "Weak issue: low-confidence indicator match",
+      "actionable_issue": "Actionable issue: correlated phishing and vulnerability"
+    },
+    "scopes": {
+      "module_default": "Threat-intel correlation"
+    },
+    "default_condition": "actionable_issue",
+    "default_scope": "module_default",
+    "supports_true_positive": true
+  }
+}

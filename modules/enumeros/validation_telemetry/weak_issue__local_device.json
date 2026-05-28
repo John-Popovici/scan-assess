@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "filename": "enumeros/enumeros.json",
+      "file_data": {
+        "module": "enumeros",
+        "provenance": {
+          "data_origin": "local_inventory",
+          "sample_data": false
+        },
+        "hostname": "office-laptop-01",
+        "asset_context": {
+          "device_scope": "local_device",
+          "is_local_host": true,
+          "inventory_method": "local_inventory",
+          "reporting_hint": "Distinguish this asset from the scan-assess host when writing findings."
+        },
+        "os": {
+          "platform": "macos",
+          "product_name": "macOS",
+          "product_version": "26.5",
+          "support_status": "current"
+        },
+        "browsers": {
+          "chrome": "123.0.6312.86",
+          "safari": "26.5"
+        },
+        "version_status": {
+          "items": [
+            {
+              "name": "os",
+              "installed": "26.5",
+              "latest": "26.5",
+              "status": "current",
+              "source": "OS vendor release policy"
+            },
+            {
+              "name": "chrome",
+              "installed": "123.0.6312.86",
+              "latest": "149.0.7827.29",
+              "status": "outdated",
+              "source": "Chrome Version History API"
+            }
+          ]
+        },
+        "summary": {
+          "overall": "warnings",
+          "outdated_count": 1,
+          "open_service_count": 0
+        }
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "enumeros",
+  "condition": "weak_issue",
+  "scope": "local_device"
+}

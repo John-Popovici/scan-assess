@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from src.runners.base_runner import BaseRunner
+from src.module_config import apply_runtime_overrides
 
 
 def _load_runner(module_dir: Path) -> type | None:
@@ -48,20 +50,50 @@ def _load_modules(modules_dir: Path) -> list[tuple[type[BaseRunner], Path]]:
     return runner_classes
 
 
-def run_modules(modules_dir: Path, output_dir: Path) -> tuple[list[Path], list[str], list[str]]:
+def run_modules(
+    modules_dir: Path,
+    output_dir: Path,
+    *,
+    module_overrides: dict[str, dict[str, Any]] | None = None,
+    generic_overrides: dict[str, Any] | None = None,
+) -> tuple[list[Path], list[str], list[str]]:
     generated_json_files: list[Path] = []
     info: list[str] = []
     errors: list[str] = []
+    enabled_raw = os.environ.get("SCAN_ASSESS_ENABLED_MODULES", "").strip()
+    disabled_raw = os.environ.get("SCAN_ASSESS_DISABLED_MODULES", "").strip()
+    enabled_modules = {item.strip() for item in enabled_raw.split(",") if item.strip()}
+    disabled_modules = {item.strip() for item in disabled_raw.split(",") if item.strip()}
 
     # Discover modules.
     runner_classes = _load_modules(modules_dir)
 
+    if module_overrides:
+        known_modules = {module_dir.name for _, module_dir in runner_classes}
+        for module_name in sorted(set(module_overrides.keys()) - known_modules):
+            errors.append(f"{module_name}: override provided but module not found.")
+
     # Iterate through each module
     for runner_class, module_dir in runner_classes:
+        if enabled_modules and module_dir.name not in enabled_modules:
+            info.append(f"{module_dir.name}: disabled by module selection.")
+            continue
+        if module_dir.name in disabled_modules:
+            info.append(f"{module_dir.name}: disabled by module selection.")
+            continue
+
         module_output_dir = output_dir / module_dir.name
         module_output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
+            info.extend(
+                apply_runtime_overrides(
+                    module_dir,
+                    module_name=module_dir.name,
+                    module_overrides=module_overrides,
+                    generic_overrides=generic_overrides,
+                )
+            )
             runner_instance = runner_class()
             module_output_dir.mkdir(parents=True, exist_ok=True)
             success, module_files = runner_instance.run(module_output_dir, module_dir)

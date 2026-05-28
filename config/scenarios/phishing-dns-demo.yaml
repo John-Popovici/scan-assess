@@ -1,0 +1,26 @@
+name: phishing-dns-demo
+description: Scenario validation with suspicious DNS lookups, matching threat-intel correlation, and a vulnerable browser signal.
+mode: demo
+prompt_profile: phishing-validation
+dnscap_log_root: modules/dnscap/imported_logs
+threatsucker_config_set: default
+include_demo_threat_intel: true
+expected_findings:
+  - phishing
+  - credential_theft
+  - brand_impersonation
+  - suspicious_dns
+  - outdated_browser
+  - known_exploited_browser_vulnerability
+module_tests:
+  dnscap: actionable_issue
+  threatsucker: actionable_issue
+  enumeros: weak_issue
+  safesniff: nominal
+actionable_evidence:
+  - Suspicious DNS lookups resembling Microsoft/SharePoint login and verification flows.
+  - Threat-intel correlation for phishing or credential theft domains.
+  - Browser vulnerability match against office-laptop-01 Chrome version.
+background_evidence:
+  - Normal cloud and productivity domains such as microsoft.com, office.com, google.com, and docusign.com.
+  - Target-detection-only SafeSniff output that should not be reported as open TCP services.

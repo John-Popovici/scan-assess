@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "module": "safesniff",
+  "description": "Validation telemetry options for permissioned network target discovery and exposed services.",
+  "generation": {
+    "positive_telemetry": "runner.py:Runner.generate_validation_evidence",
+    "background_noise": "runner.py:Runner.generate_validation_noise"
+  },
+  "validation": {
+    "conditions": {
+      "off": "Off",
+      "nominal": "Nominal: target detection only",
+      "weak_issue": "Weak issue: plaintext management exposure",
+      "actionable_issue": "Actionable issue: exposed admin services and weak encryption"
+    },
+    "scopes": {
+      "observed_network": "Observed network device"
+    },
+    "default_condition": "nominal",
+    "default_scope": "observed_network",
+    "supports_true_positive": true
+  }
+}

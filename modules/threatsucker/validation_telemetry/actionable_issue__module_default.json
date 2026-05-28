@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "filename": "threatsucker/threatsucker_correlation.json",
+      "file_data": {
+        "module": "threatsucker",
+        "provenance": {
+          "data_origin": "operator_supplied_correlation",
+          "sample_data": false,
+          "correlation_layer": true
+        },
+        "dns_matches": [
+          {
+            "indicator": "login-micros0ft-security.com",
+            "threat_type": "phishing",
+            "priority": "critical",
+            "matched_assets": [
+              "office-laptop-01"
+            ]
+          }
+        ],
+        "relevant_vulnerabilities": [
+          {
+            "cve": "CVE-2025-6554",
+            "product": "Chrome",
+            "affected_version": "123.0.6312.86",
+            "matched_assets": [
+              "office-laptop-01:chrome"
+            ],
+            "priority": "critical"
+          }
+        ]
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "threatsucker",
+  "condition": "actionable_issue",
+  "scope": "module_default"
+}

@@ -1,0 +1,46 @@
+{
+  "files": [
+    {
+      "filename": "dnscap/dnscap_summary.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "finance-tablet-02",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "observed_by": "office-dns-resolver-01",
+          "is_local_host": false,
+          "reporting_hint": "This DNS telemetry came from a network-observed device, not the machine running scan-assess."
+        },
+        "observed_queries": [
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docusign.com"
+        ],
+        "suspicious_queries": [
+          {
+            "qname": "login-micros0ft-security.com",
+            "reason": "Microsoft lookalike login domain"
+          },
+          {
+            "qname": "secure-sharepoint-document-login.com",
+            "reason": "document-sharing login lure"
+          },
+          {
+            "qname": "paypal-invoice-confirmation-portal.com",
+            "reason": "payment/invoice lure"
+          }
+        ]
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "dnscap",
+  "condition": "actionable_issue",
+  "scope": "observed_device"
+}

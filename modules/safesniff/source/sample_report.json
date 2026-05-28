@@ -1,0 +1,61 @@
+{
+  "tool": "safesniff",
+  "mode": "permissioned_safe_tcp_enumeration",
+  "metadata": {
+    "schema_version": "1.1",
+    "generated_by": "safesniff",
+    "generated_at_local": "2026-05-10T15:34:10+0200",
+    "scanner_hostname": "example-scanner.local",
+    "scan_profile": "light",
+    "timeout_ms": 450,
+    "tested_host_count": 2,
+    "tested_port_count": 6
+  },
+  "profile": "light",
+  "target": "192.0.2.0/30",
+  "target_detection": {
+    "source": "explicit_target",
+    "local_ip": "192.0.2.10",
+    "prefix": 30,
+    "confidence": "user_supplied",
+    "note": "Documentation sample using RFC 5737 addresses."
+  },
+  "tested_hosts": 2,
+  "tested_ports": [22, 53, 80, 443, 445, 3389],
+  "device_inventory": {
+    "observed_device_count": 2,
+    "active_with_open_services": 1,
+    "active_without_open_services": 1,
+    "inactive_address_count": 0,
+    "note": "Sample output for documentation; not a real network scan.",
+    "devices": [
+      {
+        "ip": "192.0.2.1",
+        "label": "example-router.local",
+        "likely_role": "router_or_gateway",
+        "open_ports": [53, 443],
+        "security_review_priority": "medium"
+      },
+      {
+        "ip": "192.0.2.2",
+        "label": "example-workstation.local",
+        "likely_role": "observed_endpoint",
+        "open_ports": [],
+        "security_review_priority": "informational"
+      }
+    ]
+  },
+  "summary": {
+    "overall": "warnings",
+    "active_hosts": 2,
+    "hosts_with_open_services": 1,
+    "open_service_count": 2
+  },
+  "safety": {
+    "exploit_checks": false,
+    "credential_attempts": false,
+    "bruteforce": false,
+    "persistence": false,
+    "packet_capture": false
+  }
+}

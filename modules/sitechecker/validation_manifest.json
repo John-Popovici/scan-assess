@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "module": "sitechecker",
+  "description": "Validation options for owner-authorized website exposure and hardening checks.",
+  "generation": {
+    "positive_telemetry": "runner.py:Runner.generate_validation_evidence"
+  },
+  "validation": {
+    "conditions": {
+      "off": "Off",
+      "nominal": "Nominal: hardened website posture",
+      "weak_issue": "Weak issue: missing hardening headers",
+      "actionable_issue": "Actionable issue: exposed secret and legacy JavaScript"
+    },
+    "scopes": {
+      "module_default": "Configured website"
+    },
+    "default_condition": "nominal",
+    "default_scope": "module_default",
+    "supports_true_positive": true
+  }
+}

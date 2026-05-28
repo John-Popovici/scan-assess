@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "module": "enumeros",
+  "condition": "background_30",
+  "scope": "module_default",
+  "purpose": "background validation telemetry",
+  "files": [
+    {
+      "filename": "enumeros/current_asset_inventory.json",
+      "file_data": {
+        "module": "enumeros",
+        "provenance": {
+          "data_origin": "operator_supplied_inventory",
+          "sample_data": false
+        },
+        "assets": [
+          {
+            "hostname": "staff-laptop-01",
+            "asset_context": {
+              "device_scope": "imported_inventory",
+              "is_local_host": false
+            },
+            "os": {
+              "platform": "macos",
+              "support_status": "current"
+            },
+            "browsers": {
+              "chrome": "149.0.7827.29",
+              "safari": "26.5"
+            },
+            "summary": {
+              "overall": "ok"
+            }
+          },
+          {
+            "hostname": "staff-laptop-02",
+            "asset_context": {
+              "device_scope": "imported_inventory",
+              "is_local_host": false
+            },
+            "os": {
+              "platform": "macos",
+              "support_status": "current"
+            },
+            "browsers": {
+              "chrome": "149.0.7827.29",
+              "safari": "26.5"
+            },
+            "summary": {
+              "overall": "ok"
+            }
+          },
+          {
+            "hostname": "staff-laptop-03",
+            "asset_context": {
+              "device_scope": "imported_inventory",
+              "is_local_host": false
+            },
+            "os": {
+              "platform": "macos",
+              "support_status": "current"
+            },
+            "browsers": {
+              "chrome": "149.0.7827.29",
+              "safari": "26.5"
+            },
+            "summary": {
+              "overall": "ok"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
