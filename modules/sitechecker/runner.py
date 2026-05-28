@@ -25,6 +25,68 @@ def _load_scanner(module_dir: Path) -> Any:
 class Runner(BaseRunner):
     """Run SiteChecker against the configured owner-authorized website."""
 
+    def validation_options(self) -> dict:
+        return {
+            "conditions": {
+                "off": "Off",
+                "nominal": "Nominal: hardened website posture",
+                "weak_issue": "Weak issue: missing hardening headers",
+                "actionable_issue": "Actionable issue: exposed secret and legacy JavaScript",
+            },
+            "scopes": {"module_default": "Configured website"},
+            "default_condition": "nominal",
+            "default_scope": "module_default",
+            "supports_true_positive": True,
+        }
+
+    def generate_validation_evidence(self, condition: str = "nominal", **_: object) -> list[dict]:
+        if condition == "off":
+            return []
+        findings: list[dict[str, Any]] = []
+        if condition in {"weak_issue", "actionable_issue"}:
+            findings.append(
+                {
+                    "kind": "missing_security_header",
+                    "severity": "medium",
+                    "url": "https://eastlondonaudio.com/",
+                    "detail": "Content-Security-Policy header was not observed.",
+                }
+            )
+        if condition == "actionable_issue":
+            findings.extend(
+                [
+                    {
+                        "kind": "exposed_interesting_path",
+                        "severity": "high",
+                        "url": "https://eastlondonaudio.com/.env",
+                        "detail": "Sensitive-looking environment file was reachable during the owner-authorized check.",
+                    },
+                    {
+                        "kind": "legacy_component",
+                        "severity": "high",
+                        "component": "jquery",
+                        "observed_version": "1.8.3",
+                        "policy_minimum": "3.7.1",
+                    },
+                ]
+            )
+        payload = {
+            "module": "sitechecker",
+            "target_url": "https://eastlondonaudio.com",
+            "provenance": {
+                "data_origin": "operator_supplied_site_check",
+                "sample_data": False,
+                "owner_authorized": True,
+                "collection_method": "low_impact_http_observation",
+            },
+            "summary": {
+                "overall": "critical" if condition == "actionable_issue" else "warnings" if condition == "weak_issue" else "ok",
+                "finding_count": len(findings),
+            },
+            "findings": findings,
+        }
+        return [{"filename": "sitechecker/sitechecker.json", "file_data": payload}]
+
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         scanner = _load_scanner(module_dir)
         config_path = module_dir / "config" / "scan_assess_runtime.json"

@@ -28,6 +28,115 @@ def _binary_name() -> str:
 class Runner(BaseRunner):
     """Run Enumeros and store its JSON output for scan-assess."""
 
+    def validation_options(self) -> dict:
+        return {
+            "conditions": {
+                "off": "Off",
+                "nominal": "Nominal: current OS and browser inventory",
+                "weak_issue": "Weak issue: browser patch gap",
+                "actionable_issue": "Actionable issue: unsupported OS with exposed services",
+            },
+            "scopes": {
+                "local_device": "Local device inventory",
+                "observed_device": "Observed non-local device inventory",
+            },
+            "default_condition": "weak_issue",
+            "default_scope": "local_device",
+            "supports_true_positive": True,
+        }
+
+    def generate_validation_evidence(self, condition: str = "nominal", scope: str = "local_device", **_: object) -> list[dict]:
+        if condition == "off":
+            return []
+        if condition == "actionable_issue":
+            inventory_host = "accounts-workstation-07" if scope == "observed_device" else "office-laptop-01"
+            payload = {
+                "module": "enumeros",
+                "provenance": {"data_origin": "local_inventory", "sample_data": False},
+                "hostname": inventory_host,
+                "asset_context": {
+                    "device_scope": "observed_non_local_device" if scope == "observed_device" else "local_device",
+                    "is_local_host": scope != "observed_device",
+                    "inventory_method": "imported_or_agent_supplied_inventory" if scope == "observed_device" else "local_inventory",
+                    "reporting_hint": "Distinguish this asset from the scan-assess host when writing findings.",
+                },
+                "os": {
+                    "platform": "windows",
+                    "product_name": "Windows 11",
+                    "display_version": "21H2",
+                    "build_number": 22000,
+                    "support_status": "unsupported_or_out_of_servicing",
+                },
+                "browsers": {"edge": "145.0.3720.10", "chrome": "123.0.6312.86"},
+                "version_status": {
+                    "items": [
+                        {"name": "os", "installed": "21H2", "latest": "25H2", "status": "outdated", "source": "Windows release policy"},
+                        {"name": "chrome", "installed": "123.0.6312.86", "latest": "149.0.7827.29", "status": "outdated", "source": "Chrome Version History API"},
+                    ]
+                },
+                "network_discovery": {
+                    "method": "tcp_connect",
+                    "local_ip": "10.40.12.44",
+                    "assumed_subnet": "10.40.12.0/24",
+                    "hosts": [{"ip": "10.40.12.44", "open_ports": [{"port": 445, "status": "open"}, {"port": 3389, "status": "open"}]}],
+                },
+                "summary": {"overall": "critical", "outdated_count": 2, "open_service_count": 2},
+            }
+        else:
+            browser_version = "123.0.6312.86" if condition == "weak_issue" else "149.0.7827.29"
+            inventory_host = "volunteer-laptop-03" if scope == "observed_device" else "office-laptop-01"
+            payload = {
+                "module": "enumeros",
+                "provenance": {"data_origin": "local_inventory", "sample_data": False},
+                "hostname": inventory_host,
+                "asset_context": {
+                    "device_scope": "observed_non_local_device" if scope == "observed_device" else "local_device",
+                    "is_local_host": scope != "observed_device",
+                    "inventory_method": "imported_or_agent_supplied_inventory" if scope == "observed_device" else "local_inventory",
+                    "reporting_hint": "Distinguish this asset from the scan-assess host when writing findings.",
+                },
+                "os": {"platform": "macos", "product_name": "macOS", "product_version": "26.5", "support_status": "current"},
+                "browsers": {"chrome": browser_version, "safari": "26.5"},
+                "version_status": {
+                    "items": [
+                        {"name": "os", "installed": "26.5", "latest": "26.5", "status": "current", "source": "OS vendor release policy"},
+                        {
+                            "name": "chrome",
+                            "installed": browser_version,
+                            "latest": "149.0.7827.29",
+                            "status": "outdated" if condition == "weak_issue" else "current",
+                            "source": "Chrome Version History API",
+                        },
+                    ]
+                },
+                "summary": {"overall": "warnings" if condition == "weak_issue" else "ok", "outdated_count": 1 if condition == "weak_issue" else 0, "open_service_count": 0},
+            }
+        return [{"filename": "enumeros/enumeros.json", "file_data": payload}]
+
+    def generate_validation_noise(self, noise_level: int = 0, **_: object) -> list[dict]:
+        noise_count = max(0, min(int(noise_level), 100))
+        if noise_count < 10:
+            return []
+        return [
+            {
+                "filename": "enumeros/current_asset_inventory.json",
+                "file_data": {
+                    "module": "enumeros",
+                    "provenance": {"data_origin": "operator_supplied_inventory", "sample_data": False},
+                    "assets": [
+                        {
+                            "hostname": f"staff-laptop-{idx:02d}",
+                            "asset_context": {"device_scope": "imported_inventory", "is_local_host": False},
+                            "os": {"platform": "macos", "support_status": "current"},
+                            "browsers": {"chrome": "149.0.7827.29", "safari": "26.5"},
+                            "summary": {"overall": "ok"},
+                        }
+                        for idx in range(1, min(noise_count // 10, 6) + 1)
+                    ],
+                },
+            }
+        ]
+
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         binary = Path(os.environ.get("SCAN_ASSESS_ENUMEROS_BIN", module_dir / "bin" / _binary_name()))
         timeout = int(os.environ.get("SCAN_ASSESS_ENUMEROS_TIMEOUT", "120"))

@@ -254,7 +254,7 @@ def _summary(
             "note": (
                 "Bundled sample DNScap logs for parser/report testing; do not treat as live user activity."
                 if data_origin == "sample"
-                else "Imported DNScap logs; treat as historical DNS observation evidence, not proof of compromise."
+                else "Imported DNScap logs; treat as historical DNS observation telemetry, not proof of compromise."
             ),
         },
         "source_root": str(root),
@@ -282,6 +282,119 @@ def _summary(
 
 class Runner(BaseRunner):
     """Read DNScap logs and emit a compact JSON summary."""
+
+    def validation_options(self) -> dict:
+        return {
+            "conditions": {
+                "off": "Off",
+                "nominal": "Nominal: routine DNS telemetry",
+                "weak_issue": "Weak issue: suspicious DNS without correlation",
+                "actionable_issue": "Actionable issue: phishing DNS pattern",
+            },
+            "scopes": {
+                "local_device": "Local device DNS",
+                "observed_device": "Observed non-local device DNS",
+            },
+            "default_condition": "actionable_issue",
+            "default_scope": "observed_device",
+            "supports_true_positive": True,
+        }
+
+    def generate_validation_evidence(self, condition: str = "nominal", scope: str = "observed_device", **_: object) -> list[dict]:
+        if condition == "off":
+            return []
+        if scope == "observed_device":
+            dns_host = "finance-tablet-02"
+            dns_context = {
+                "device_scope": "observed_non_local_device",
+                "observed_by": "office-dns-resolver-01",
+                "is_local_host": False,
+                "reporting_hint": "This DNS telemetry came from a network-observed device, not the machine running scan-assess.",
+            }
+        else:
+            dns_host = "office-laptop-01"
+            dns_context = {
+                "device_scope": "local_device",
+                "observed_by": "scan-assess host",
+                "is_local_host": True,
+                "reporting_hint": "This DNS telemetry is for the local machine running scan-assess.",
+            }
+        payload: dict = {
+            "module": "dnscap",
+            "provenance": {
+                "data_origin": "operator_supplied",
+                "sample_data": False,
+                "collection_method": "historical_dns_log_import",
+            },
+            "host": dns_host,
+            "asset_context": dns_context,
+            "observed_queries": ["microsoft.com", "office.com", "google.com", "docusign.com"],
+        }
+        if condition == "actionable_issue":
+            payload["suspicious_queries"] = [
+                {"qname": "login-micros0ft-security.com", "reason": "Microsoft lookalike login domain"},
+                {"qname": "secure-sharepoint-document-login.com", "reason": "document-sharing login lure"},
+                {"qname": "paypal-invoice-confirmation-portal.com", "reason": "payment/invoice lure"},
+            ]
+        elif condition == "weak_issue":
+            payload["suspicious_queries"] = [
+                {"qname": "login-office365-support.example", "reason": "login-themed domain outside known allowlist"}
+            ]
+            payload["telemetry_limitations"] = [
+                "Single low-volume DNS lookup only.",
+                "No threat-intel correlation or confirmed browser visit in this telemetry.",
+            ]
+        else:
+            payload["suspicious_queries"] = []
+        return [{"filename": "dnscap/dnscap_summary.json", "file_data": payload}]
+
+    def generate_validation_noise(self, noise_level: int = 0, **_: object) -> list[dict]:
+        noise_count = max(0, min(int(noise_level), 100))
+        if noise_count == 0:
+            return []
+        domain_pool = [
+            "microsoft.com",
+            "office.com",
+            "google.com",
+            "docs.google.com",
+            "docusign.com",
+            "stripe.com",
+            "paypal.com",
+            "zoom.us",
+            "cloudflare.com",
+            "letsencrypt.org",
+            "europa.eu",
+            "guichet.public.lu",
+            "bgl.lu",
+            "post.lu",
+            "slack.com",
+            "github.com",
+        ]
+        files: list[dict] = []
+        for index in range(1, noise_count + 1):
+            host = f"staff-device-{index:02d}"
+            files.append(
+                {
+                    "filename": f"dnscap/resolver_observation_{index:02d}.json",
+                    "file_data": {
+                        "module": "dnscap",
+                        "provenance": {
+                            "data_origin": "operator_supplied",
+                            "sample_data": False,
+                            "collection_method": "historical_dns_log_import",
+                        },
+                        "host": host,
+                        "asset_context": {
+                            "device_scope": "observed_non_local_device",
+                            "is_local_host": False,
+                            "observed_by": "office-dns-resolver-01",
+                        },
+                        "observed_queries": domain_pool[index % len(domain_pool):] + domain_pool[: index % len(domain_pool)],
+                        "suspicious_queries": [],
+                    },
+                }
+            )
+        return files
 
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         config = load_module_runtime_config(module_dir)

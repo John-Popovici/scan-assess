@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import importlib.util
 import json
 import os
 import platform
@@ -61,6 +62,104 @@ def _module_rows() -> list[dict[str, str]]:
             }
         )
     return rows
+
+
+def _module_runner_instance(module_name: str) -> Any | None:
+    runner_path = MODULES_ROOT / module_name / "runner.py"
+    if not runner_path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location(f"gui_runner_{module_name}", runner_path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    runner_class = getattr(module, "Runner", None)
+    if runner_class is None:
+        return None
+    return runner_class()
+
+
+def _module_validation_manifest_path(module_name: str) -> Path | None:
+    module_dir = MODULES_ROOT / module_name
+    for path in [
+        module_dir / "telemetry_manifest.json",
+        module_dir / "validation_manifest.json",
+        module_dir / "validation" / "manifest.json",
+        module_dir / "telemetry_options.json",
+        module_dir / "evidence_options.json",
+    ]:
+        if path.exists():
+            return path
+    return None
+
+
+def _module_validation_manifest(module_name: str) -> dict[str, Any]:
+    path = _module_validation_manifest_path(module_name)
+    if path is None:
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "warning": f"Validation manifest could not be read: {exc}",
+            "manifest_path": str(path.relative_to(PROJECT_ROOT)),
+        }
+    if not isinstance(data, dict):
+        return {
+            "warning": "Validation manifest must be a JSON object.",
+            "manifest_path": str(path.relative_to(PROJECT_ROOT)),
+        }
+    data["manifest_path"] = str(path.relative_to(PROJECT_ROOT))
+    return data
+
+
+def _module_validation_capability(module_name: str) -> dict[str, Any]:
+    manifest = _module_validation_manifest(module_name)
+    options = manifest.get("validation") if isinstance(manifest.get("validation"), dict) else manifest
+    if options:
+        conditions = options.get("conditions") if isinstance(options.get("conditions"), dict) else {}
+        scopes = options.get("scopes") if isinstance(options.get("scopes"), dict) else {}
+        return {
+            "conditions": conditions or {"off": "Off", "nominal": "Nominal telemetry"},
+            "scopes": scopes or {"module_default": "Module default"},
+            "default_condition": str(options.get("default_condition") or "nominal"),
+            "default_scope": str(options.get("default_scope") or "module_default"),
+            "supports_true_positive": bool(options.get("supports_true_positive", "actionable_issue" in conditions)),
+            "warning": str(options.get("warning") or manifest.get("warning") or ""),
+            "manifest_path": str(manifest.get("manifest_path") or ""),
+            "manifest": manifest,
+        }
+
+    runner = _module_runner_instance(module_name)
+    if runner is None or not hasattr(runner, "validation_options"):
+        return {
+            "conditions": {
+                "off": "Off",
+                "nominal": "Nominal telemetry",
+            },
+            "scopes": {"module_default": "Module default"},
+            "default_condition": "nominal",
+            "default_scope": "module_default",
+            "supports_true_positive": False,
+            "warning": "This module has not exposed validation telemetry options yet.",
+            "manifest_path": "",
+            "manifest": {},
+        }
+    options = runner.validation_options()
+    if not isinstance(options, dict):
+        options = {}
+    conditions = options.get("conditions") if isinstance(options.get("conditions"), dict) else {}
+    scopes = options.get("scopes") if isinstance(options.get("scopes"), dict) else {}
+    return {
+        "conditions": conditions or {"off": "Off", "nominal": "Nominal telemetry"},
+        "scopes": scopes or {"module_default": "Module default"},
+        "default_condition": str(options.get("default_condition") or "nominal"),
+        "default_scope": str(options.get("default_scope") or "module_default"),
+        "supports_true_positive": bool(options.get("supports_true_positive", "actionable_issue" in conditions)),
+        "warning": str(options.get("warning") or ""),
+        "manifest_path": "",
+        "manifest": {},
+    }
 
 
 def _module_settings_surfaces(module_name: str) -> list[dict[str, str]]:
@@ -206,7 +305,7 @@ def _is_validation_report(path: Path) -> bool:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
-    return "prompt developer evidence payload:" in text or "background_noise/" in text
+    return "prompt developer telemetry payload:" in text or "prompt developer evidence payload:" in text or "background_noise/" in text
 
 
 def _report_options(include_validation: bool = False) -> dict[str, str]:
@@ -514,7 +613,7 @@ def _next_output_preview(mode: str) -> str:
     ts = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
     return (
         f"Report: {REPORTS_ROOT}\n"
-        f"Evidence: {OUTPUTS_ROOT}/{ts}"
+        f"Telemetry: {OUTPUTS_ROOT}/{ts}"
     )
 
 
@@ -595,12 +694,12 @@ def _highlight_markdown(file_name: str, data: Any) -> str:
 def _evidence_link_markdown(run_name: str, report_text: str) -> str:
     files = list(_evidence_files(run_name))
     if not files:
-        return "No evidence files found for this run."
-    lines = ["### Evidence Links"]
+        return "No telemetry files found for this run."
+    lines = ["### Telemetry Links"]
     report_lower = report_text.lower()
     for file_name in files:
         mentioned = file_name.lower() in report_lower or Path(file_name).name.lower() in report_lower
-        marker = "mentioned in report" if mentioned else "available evidence"
+        marker = "mentioned in report" if mentioned else "available telemetry"
         lines.append(f"- `{file_name}` - {marker}")
     return "\n".join(lines)
 
@@ -662,7 +761,7 @@ def _report_context_files(run_name: str | None, report_text: str) -> tuple[list[
 def _evidence_empty_message(run_name: str) -> str:
     if not run_name:
         return (
-            "No run selected yet. After a run completes, evidence appears under "
+            "No run selected yet. After a run completes, telemetry appears under "
             f"`{OUTPUTS_ROOT}/<run>/<module>/`."
         )
     modules = _module_names_for_run(run_name)
@@ -726,37 +825,7 @@ def _save_test_suite(name: str, data: dict[str, Any]) -> Path:
 
 
 def _module_test_options(module_name: str) -> dict[str, str]:
-    standard = {
-        "off": "Off",
-        "nominal": "Nominal telemetry",
-        "weak_issue": "Low-confidence issue",
-        "actionable_issue": "High-confidence actionable issue",
-    }
-    labels = {
-        "dnscap": {
-            "nominal": "Nominal: routine DNS telemetry",
-            "weak_issue": "Weak issue: suspicious DNS without correlation",
-            "actionable_issue": "Actionable issue: phishing DNS pattern",
-        },
-        "threatsucker": {
-            "nominal": "Nominal: no relevant intel correlation",
-            "weak_issue": "Weak issue: relevant intel without asset match",
-            "actionable_issue": "Actionable issue: correlated phishing and vulnerability",
-        },
-        "enumeros": {
-            "nominal": "Nominal: current OS and browser inventory",
-            "weak_issue": "Weak issue: browser patch gap",
-            "actionable_issue": "Actionable issue: unsupported OS with exposed services",
-        },
-        "safesniff": {
-            "nominal": "Nominal: target detection only",
-            "weak_issue": "Weak issue: medium-risk admin surface",
-            "actionable_issue": "Actionable issue: high-risk exposed services",
-        },
-    }
-    merged = standard.copy()
-    merged.update(labels.get(module_name, {}))
-    return merged
+    return {str(key): str(value) for key, value in _module_validation_capability(module_name)["conditions"].items()}
 
 
 def _normalise_validation_choice(value: str | None) -> str:
@@ -777,29 +846,12 @@ def _normalise_validation_choice(value: str | None) -> str:
 
 
 def _module_scope_options(module_name: str) -> dict[str, str]:
-    if module_name == "dnscap":
-        return {
-            "local_device": "Local device DNS",
-            "observed_device": "Observed non-local device DNS",
-        }
-    if module_name == "enumeros":
-        return {
-            "local_device": "Local device inventory",
-            "observed_device": "Observed non-local device inventory",
-        }
-    if module_name == "safesniff":
-        return {"observed_network": "Observed network device"}
-    return {"module_default": "Module default"}
+    return {str(key): str(value) for key, value in _module_validation_capability(module_name)["scopes"].items()}
 
 
 def _default_module_scopes() -> dict[str, str]:
-    defaults = {
-        "dnscap": "observed_device",
-        "enumeros": "local_device",
-        "safesniff": "observed_network",
-    }
     return {
-        row["module"]: defaults.get(row["module"], "module_default")
+        row["module"]: str(_module_validation_capability(row["module"]).get("default_scope") or "module_default")
         for row in _module_rows()
         if row["status"] == "detected"
     }
@@ -809,6 +861,78 @@ def _module_scope_value(module_name: str, module_scopes: dict[str, str] | None) 
     options = _module_scope_options(module_name)
     selected = (module_scopes or {}).get(module_name)
     return selected if selected in options else next(iter(options))
+
+
+def _slug_for_path(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in value.strip().lower())
+    return cleaned.strip("_") or "default"
+
+
+def _module_validation_telemetry_dir(module_name: str) -> Path:
+    return MODULES_ROOT / module_name / "validation_telemetry"
+
+
+def _module_validation_telemetry_path(module_name: str, condition: str, scope: str) -> Path:
+    condition_slug = _slug_for_path(_normalise_validation_choice(condition))
+    scope_slug = _slug_for_path(scope)
+    return _module_validation_telemetry_dir(module_name) / f"{condition_slug}__{scope_slug}.json"
+
+
+def _normalise_telemetry_document(module_name: str, condition: str, scope: str, data: Any) -> dict[str, Any]:
+    if isinstance(data, dict) and isinstance(data.get("files"), list):
+        document = dict(data)
+        document.setdefault("schema_version", 1)
+        document.setdefault("module", module_name)
+        document.setdefault("condition", _normalise_validation_choice(condition))
+        document.setdefault("scope", scope)
+        return document
+    if isinstance(data, list):
+        return {
+            "schema_version": 1,
+            "module": module_name,
+            "condition": _normalise_validation_choice(condition),
+            "scope": scope,
+            "files": data,
+        }
+    return {
+        "schema_version": 1,
+        "module": module_name,
+        "condition": _normalise_validation_choice(condition),
+        "scope": scope,
+        "files": [],
+    }
+
+
+def _write_module_validation_telemetry(module_name: str, condition: str, scope: str, data: Any) -> Path:
+    document = _normalise_telemetry_document(module_name, condition, scope, data)
+    target = _module_validation_telemetry_path(module_name, condition, scope)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(document, indent=2, sort_keys=False), encoding="utf-8")
+    return target
+
+
+def _module_validation_telemetry_document(module_name: str, condition: str, scope: str, generate_missing: bool = True) -> dict[str, Any]:
+    path = _module_validation_telemetry_path(module_name, condition, scope)
+    if path.exists():
+        try:
+            return _normalise_telemetry_document(module_name, condition, scope, json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError):
+            return _normalise_telemetry_document(module_name, condition, scope, {"files": []})
+    if not generate_missing:
+        return _normalise_telemetry_document(module_name, condition, scope, {"files": []})
+    runner = _module_runner_instance(module_name)
+    generated: list[dict[str, Any]] = []
+    if runner is not None and hasattr(runner, "generate_validation_evidence"):
+        payload = runner.generate_validation_evidence(condition=_normalise_validation_choice(condition), scope=scope)
+        if isinstance(payload, list):
+            generated = [item for item in payload if isinstance(item, dict)]
+    document = _normalise_telemetry_document(module_name, condition, scope, {"files": generated})
+    _write_module_validation_telemetry(module_name, condition, scope, document)
+    return document
+
+
+def _module_validation_telemetry_display_path(module_name: str, condition: str, scope: str) -> str:
+    return str(_module_validation_telemetry_path(module_name, condition, scope).relative_to(PROJECT_ROOT))
 
 
 def _module_description_markdown(module_name: str) -> str:
@@ -835,29 +959,22 @@ def _module_description_markdown(module_name: str) -> str:
         "sitechecker": (
             "Runs a low-impact owner-authorized exposure and hardening check against one configured website. "
             "It checks HTTPS posture, security headers, cookie flags, common exposed paths such as .env or .git metadata, login/form exposure, technology markers, and simple legacy-version heuristics. "
-            "It is designed for the organisation's own website and writes its findings as module JSON evidence for scan-assess."
+            "It is designed for the organisation's own website and writes its findings as module JSON telemetry for scan-assess."
         ),
         "example_module": (
             "Minimal example runner used to prove the module interface works. "
-            "It is disabled by default because its output is not operational security evidence."
+            "It is disabled by default because its output is not operational security telemetry."
         ),
     }
     return descriptions.get(
         module_name,
-        "Detected module. It contributes JSON evidence to scan-assess when enabled.",
+        "Detected module. It contributes JSON telemetry to scan-assess when enabled.",
     )
 
 
 def _default_validation_module_tests() -> dict[str, str]:
-    defaults = {
-        "dnscap": "actionable_issue",
-        "enumeros": "weak_issue",
-        "example_module": "nominal",
-        "safesniff": "nominal",
-        "threatsucker": "actionable_issue",
-    }
     return {
-        row["module"]: _normalise_validation_choice(defaults.get(row["module"], "nominal"))
+        row["module"]: _normalise_validation_choice(str(_module_validation_capability(row["module"]).get("default_condition") or "nominal"))
         for row in _module_rows()
         if row["status"] == "detected"
     }
@@ -890,92 +1007,31 @@ def _background_evidence_from_run(run_name: str | None) -> list[dict[str, Any]]:
 
 
 def _generated_background_noise(noise_level: int) -> list[dict[str, Any]]:
-    noise_count = max(0, min(int(noise_level), 100))
-    if noise_count == 0:
-        return []
-    domain_pool = [
-        "microsoft.com",
-        "office.com",
-        "google.com",
-        "docs.google.com",
-        "docusign.com",
-        "stripe.com",
-        "paypal.com",
-        "zoom.us",
-        "cloudflare.com",
-        "letsencrypt.org",
-        "europa.eu",
-        "guichet.public.lu",
-        "bgl.lu",
-        "post.lu",
-        "slack.com",
-        "github.com",
-    ]
     files: list[dict[str, Any]] = []
-    for index in range(1, noise_count + 1):
-        host = f"staff-device-{index:02d}"
-        files.append(
-            {
-                "filename": f"dnscap/resolver_observation_{index:02d}.json",
-                "file_data": {
-                    "module": "dnscap",
-                    "provenance": {
-                        "data_origin": "operator_supplied",
-                        "sample_data": False,
-                        "collection_method": "historical_dns_log_import",
+    for row in _module_rows():
+        if row["status"] != "detected":
+            continue
+        runner = _module_runner_instance(row["module"])
+        if runner is None or not hasattr(runner, "generate_validation_noise"):
+            continue
+        generated = runner.generate_validation_noise(noise_level=noise_level)
+        if isinstance(generated, list):
+            module_files = [item for item in generated if isinstance(item, dict)]
+            if module_files:
+                _write_module_validation_telemetry(
+                    row["module"],
+                    f"background_{int(noise_level)}",
+                    "module_default",
+                    {
+                        "schema_version": 1,
+                        "module": row["module"],
+                        "condition": f"background_{int(noise_level)}",
+                        "scope": "module_default",
+                        "purpose": "background validation telemetry",
+                        "files": module_files,
                     },
-                    "host": host,
-                    "asset_context": {
-                        "device_scope": "observed_non_local_device",
-                        "is_local_host": False,
-                        "observed_by": "office-dns-resolver-01",
-                    },
-                    "observed_queries": domain_pool[index % len(domain_pool):] + domain_pool[: index % len(domain_pool)],
-                    "suspicious_queries": [],
-                },
-            }
-        )
-    if noise_count >= 10:
-        files.append(
-            {
-                "filename": "enumeros/current_asset_inventory.json",
-                "file_data": {
-                    "module": "enumeros",
-                    "provenance": {"data_origin": "operator_supplied_inventory", "sample_data": False},
-                    "assets": [
-                        {
-                            "hostname": f"staff-laptop-{idx:02d}",
-                            "asset_context": {"device_scope": "imported_inventory", "is_local_host": False},
-                            "os": {"platform": "macos", "support_status": "current"},
-                            "browsers": {"chrome": "149.0.7827.29", "safari": "26.5"},
-                            "summary": {"overall": "ok"},
-                        }
-                        for idx in range(1, min(noise_count // 10, 6) + 1)
-                    ],
-                },
-            }
-        )
-    if noise_count >= 25:
-        files.append(
-            {
-                "filename": "safesniff/permitted_service_inventory.json",
-                "file_data": {
-                    "module": "safesniff",
-                    "mode": "permissioned_safe_tcp_enumeration",
-                    "provenance": {"active_network_scan": True, "sample_data": False},
-                    "asset_context": {
-                        "device_scope": "observed_network",
-                        "is_local_host": False,
-                        "observed_by": "office-network-sensor-01",
-                    },
-                    "hosts": [
-                        {"ip": "10.40.12.10", "services": [{"port": 443, "service": "https", "severity": "info", "encryption": "tls"}]},
-                        {"ip": "10.40.12.11", "services": [{"port": 53, "service": "dns", "severity": "info"}]},
-                    ],
-                    "summary": {"overall": "ok", "high_count": 0, "medium_count": 0},
-                },
-            }
-        )
+                )
+                files.extend(module_files)
     return files
 
 
@@ -989,13 +1045,13 @@ def _selected_positive_summary(module_tests: dict[str, str]) -> list[str]:
     return labels
 
 
-def _prompt_developer_evidence(
+def _legacy_prompt_developer_evidence(
     module_tests: dict[str, str],
     background_run_name: str | None = None,
     module_scopes: dict[str, str] | None = None,
     background_noise: int = 0,
 ) -> str:
-    """Build the editable evidence payload without revealing validation intent to the LLM."""
+    """Build the editable telemetry payload without revealing validation intent to the LLM."""
     dnscap_mode = _normalise_validation_choice(module_tests.get("dnscap", "actionable_issue"))
     threatsucker_mode = _normalise_validation_choice(module_tests.get("threatsucker", "actionable_issue"))
     enumeros_mode = _normalise_validation_choice(module_tests.get("enumeros", "nominal"))
@@ -1014,7 +1070,7 @@ def _prompt_developer_evidence(
                 "device_scope": "observed_non_local_device",
                 "observed_by": "office-dns-resolver-01",
                 "is_local_host": False,
-                "reporting_hint": "This DNS evidence came from a network-observed device, not the machine running scan-assess.",
+                "reporting_hint": "This DNS telemetry came from a network-observed device, not the machine running scan-assess.",
             }
         else:
             dns_host = "office-laptop-01"
@@ -1022,7 +1078,7 @@ def _prompt_developer_evidence(
                 "device_scope": "local_device",
                 "observed_by": "scan-assess host",
                 "is_local_host": True,
-                "reporting_hint": "This DNS evidence is for the local machine running scan-assess.",
+                "reporting_hint": "This DNS telemetry is for the local machine running scan-assess.",
             }
         dns_payload: dict[str, Any] = {
             "module": "dnscap",
@@ -1045,9 +1101,9 @@ def _prompt_developer_evidence(
             dns_payload["suspicious_queries"] = [
                 {"qname": "login-office365-support.example", "reason": "login-themed domain outside known allowlist"}
             ]
-            dns_payload["evidence_limitations"] = [
+            dns_payload["telemetry_limitations"] = [
                 "Single low-volume DNS lookup only.",
-                "No threat-intel correlation or confirmed browser visit in this evidence.",
+                "No threat-intel correlation or confirmed browser visit in this telemetry.",
             ]
         else:
             dns_payload["suspicious_queries"] = []
@@ -1221,7 +1277,7 @@ def _prompt_developer_evidence(
                 "tool": "safesniff",
                 "mode": "permissioned_safe_tcp_enumeration",
                 "provenance": {"active_network_scan": True, "total_tcp_connect_attempts_planned": 256, "sample_data": False},
-                "target": "192.168.178.0/24",
+                "target": "198.51.100.0/24",
                 "asset_context": {
                     "device_scope": safesniff_scope,
                     "is_local_host": False,
@@ -1232,7 +1288,7 @@ def _prompt_developer_evidence(
                     "active_with_open_services": 1,
                     "devices": [
                         {
-                            "ip": "192.168.178.1",
+                            "ip": "198.51.100.1",
                             "label": "gateway",
                             "likely_role": "router_or_gateway",
                             "exposure_level": "medium",
@@ -1270,6 +1326,53 @@ def _prompt_developer_evidence(
             }
         )
 
+    return json.dumps({"files": files}, indent=2)
+
+
+def _module_validation_warning(module_name: str) -> str:
+    capability = _module_validation_capability(module_name)
+    conditions = capability.get("conditions") if isinstance(capability.get("conditions"), dict) else {}
+    if not capability.get("supports_true_positive") or "actionable_issue" not in conditions:
+        return "Light warning: this module does not expose a high-confidence positive telemetry option yet."
+    return str(capability.get("warning") or "")
+
+
+def _module_generated_validation_evidence(
+    module_name: str,
+    condition: str,
+    module_scopes: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    runner = _module_runner_instance(module_name)
+    if runner is None or not hasattr(runner, "generate_validation_evidence"):
+        return []
+    options = _module_test_options(module_name)
+    selected = _normalise_validation_choice(condition)
+    if selected not in options:
+        selected = "nominal" if "nominal" in options else next(iter(options))
+    scope = _module_scope_value(module_name, module_scopes)
+    document = _module_validation_telemetry_document(module_name, selected, scope, generate_missing=True)
+    files = document.get("files")
+    return [item for item in files if isinstance(item, dict)] if isinstance(files, list) else []
+
+
+def _prompt_developer_evidence(
+    module_tests: dict[str, str],
+    background_run_name: str | None = None,
+    module_scopes: dict[str, str] | None = None,
+    background_noise: int = 0,
+) -> str:
+    """Build the editable telemetry payload from module-owned validation generators."""
+    files: list[dict[str, Any]] = _background_evidence_from_run(background_run_name)
+    files.extend(_generated_background_noise(background_noise))
+    for row in _module_rows():
+        if row["status"] != "detected":
+            continue
+        module_name = row["module"]
+        capability = _module_validation_capability(module_name)
+        selected = _normalise_validation_choice(
+            module_tests.get(module_name, str(capability.get("default_condition") or "nominal"))
+        )
+        files.extend(_module_generated_validation_evidence(module_name, selected, module_scopes))
     return json.dumps({"files": files}, indent=2)
 
 
@@ -1406,6 +1509,7 @@ def main_page() -> None:
         },
         "running": False,
         "demo_run_button": None,
+        "generator_selected_module": next((row["module"] for row in _module_rows() if row["status"] == "detected"), ""),
         "active_llm_profile": "local-llamacpp" if "local-llamacpp" in list_llm_profiles() else next(iter(list_llm_profiles()), None),
         "settings_processes": {},
         "dnscap_log_root": _default_dnscap_log_root(),
@@ -1484,16 +1588,16 @@ def main_page() -> None:
                         return
                     state["running"] = True
                     run_log.value = "Running validation prompt check\n"
-                    validation_result.content = "Running validation prompt check...\n\nThe request has been sent to the selected LLM. Large evidence mixes can take a few minutes on a local model."
-                    validation_run_status.content = "**LLM running** - processing evidence and prompt."
+                    validation_result.content = "Running validation prompt check...\n\nThe request has been sent to the selected LLM. Large telemetry mixes can take a few minutes on a local model."
+                    validation_run_status.content = "**LLM running** - processing telemetry and prompt."
                     if state["demo_run_button"]:
                         state["demo_run_button"].disable()
                         state["demo_run_button"].props("loading")
-                    evidence_path = PROJECT_ROOT / "outputs" / "_prompt_developer_evidence.json"
+                    evidence_path = PROJECT_ROOT / "outputs" / "_prompt_developer_telemetry.json"
                     try:
                         parsed_evidence = json.loads(str(evidence_payload.value or ""))
                     except json.JSONDecodeError as exc:
-                        ui.notify(f"Evidence JSON is invalid: {exc}", type="negative")
+                        ui.notify(f"Telemetry JSON is invalid: {exc}", type="negative")
                         if state["demo_run_button"]:
                             state["demo_run_button"].enable()
                         state["running"] = False
@@ -1511,7 +1615,7 @@ def main_page() -> None:
                         validation_result.content = (
                             f"Validation run not started: estimated prompt size `{estimate:,}` tokens exceeds "
                             f"usable context `{usable_context:,}` for `{active_profile.name}`.\n\n"
-                            "Reduce background evidence/noise or increase the LLM profile context size."
+                            "Reduce background telemetry/noise or increase the LLM profile context size."
                         )
                         validation_run_status.content = "**Blocked** - prompt is larger than configured LLM context."
                         if state["demo_run_button"]:
@@ -1703,10 +1807,10 @@ def main_page() -> None:
                 with ui.tabs().classes("w-full sa-nav") as tabs:
                     reports_tab = ui.tab("Reports", icon="article")
                     prompt_developer_tab = ui.tab("Validation", icon="science")
-                    evidence_tab = ui.tab("Evidence", icon="data_object")
+                    evidence_tab = ui.tab("Telemetry", icon="data_object")
                     llm_setup_tab = ui.tab("LLM Setup", icon="settings_applications")
                     modules_tab = ui.tab("Modules", icon="extension")
-                    evidence_generator_tab = ui.tab("Evidence Generator", icon="playlist_add")
+                    evidence_generator_tab = ui.tab("Telemetry Editor", icon="playlist_add")
 
                 panels = ui.tab_panels(tabs, value=reports_tab).classes("w-full sa-panels")
                 with panels:
@@ -1740,7 +1844,7 @@ def main_page() -> None:
                                     report_meta = ui.markdown("")
                                     report_context_actions = ui.column().classes("gap-1 w-full")
                                     ui.separator()
-                                    ui.label("Evidence Used By Report").classes("font-semibold")
+                                    ui.label("Telemetry Used By Report").classes("font-semibold")
                                     report_evidence_links = ui.column().classes("gap-1 w-full")
                                     ui.separator()
                                     ui.label("Supporting Run Files").classes("font-semibold")
@@ -1751,7 +1855,7 @@ def main_page() -> None:
                                 if not report_name:
                                     report_view.content = (
                                         "No reports have been generated in this worktree yet.\n\n"
-                                        f"After a run, reports appear in `{REPORTS_ROOT}` and evidence appears in `{OUTPUTS_ROOT}/<run>/`."
+                                        f"After a run, reports appear in `{REPORTS_ROOT}` and telemetry appears in `{OUTPUTS_ROOT}/<run>/`."
                                     )
                                     report_meta.content = "### Output Paths\n" + _next_output_preview("assessment")
                                     report_context_actions.clear()
@@ -1797,7 +1901,7 @@ def main_page() -> None:
                                             on_click=lambda r=run_name: open_evidence_from_report(r, "run_manifest.json"),
                                         ).props("flat dense").classes("w-full sa-context-button")
                                         ui.button(
-                                            "Open full evidence browser",
+                                            "Open full telemetry browser",
                                             icon="account_tree",
                                             on_click=lambda r=run_name: open_run_from_report(r),
                                         ).props("flat dense").classes("w-full sa-context-button")
@@ -1813,7 +1917,7 @@ def main_page() -> None:
                                                 on_click=lambda f=file_name, r=run_name: open_evidence_from_report(r, f),
                                             ).props("flat dense").classes("w-full sa-context-button")
                                     else:
-                                        ui.markdown("No input evidence files were recorded for this report.")
+                                        ui.markdown("No input telemetry files were recorded for this report.")
                                 report_supporting_links.clear()
                                 with report_supporting_links:
                                     if supporting_files:
@@ -1824,7 +1928,7 @@ def main_page() -> None:
                                                 on_click=lambda f=file_name, r=run_name: open_evidence_from_report(r, f),
                                             ).props("flat dense").classes("w-full sa-context-button")
                                         if len(supporting_files) > 12:
-                                            ui.markdown(f"`{len(supporting_files) - 12}` more files are available in the Evidence tab.")
+                                            ui.markdown(f"`{len(supporting_files) - 12}` more files are available in the Telemetry tab.")
                                     else:
                                         ui.markdown("No additional run files found.")
 
@@ -1858,7 +1962,7 @@ def main_page() -> None:
                                 save_test_suite_button = ui.button("Save Suite", icon="save").props("outline dense")
                                 background_run_select = ui.select(
                                     {"": "Generated baseline only", **_run_options()},
-                                    label="Background evidence",
+                                    label="Background telemetry",
                                     value="",
                                 ).style("width: 320px;")
                                 with ui.column().classes("gap-0").style("width: 260px;"):
@@ -1881,7 +1985,7 @@ def main_page() -> None:
                                     ui.label("LLM output").classes("font-semibold")
                                     validation_result = ui.markdown(_latest_report_text(validation_only=True)).classes("sa-validation-output")
                                 module_test_column = ui.column().classes("sa-band p-2 gap-2 sa-evidence-generator sa-injector-panel")
-                            evidence_payload = ui.textarea("Evidence sent to the LLM").classes("hidden")
+                            evidence_payload = ui.textarea("Telemetry sent to the LLM").classes("hidden")
 
                             def load_profile_into_editor(name: str | None = None) -> None:
                                 profile = load_prompt_profile(name or prompt_select.value or "default")
@@ -1940,13 +2044,11 @@ def main_page() -> None:
                                 positives = _selected_positive_summary(state["module_tests"])
                                 background_text = str(background_run_select.value or "")
                                 positive_summary.content = (
-                                    "**Evidence mix**\n\n"
+                                    "**Telemetry mix**\n\n"
                                     f"- Background: `{background_text or 'generated baseline only'}`\n"
-                                    f"- Generated noise files: `{state['background_noise']}`\n"
+                                    f"- Generated background telemetry files: `{state['background_noise']}`\n"
                                     f"- Injected positives: {', '.join(positives) if positives else '`none`'}"
                                 )
-                                if state.get("generator_preview") is not None:
-                                    state["generator_preview"].value = evidence_payload.value
                                 if state.get("generator_summary") is not None:
                                     state["generator_summary"].content = positive_summary.content
                                 try:
@@ -1979,16 +2081,22 @@ def main_page() -> None:
                                 refresh_prompt_developer_evidence()
                                 module_test_column.clear()
                                 with module_test_column:
-                                    ui.label("Evidence Injector").classes("font-semibold")
-                                    ui.label("Select which generated module positives are injected into this validation run. Use Evidence Generator for detailed payload editing.").classes("sa-muted text-xs")
+                                    ui.label("Telemetry Injector").classes("font-semibold")
+                                    ui.label("Select which module-owned validation telemetry is injected into this validation run. Use Telemetry Editor for file-level editing.").classes("sa-muted text-xs")
                                     for row in _module_rows():
                                         if row["status"] != "detected":
                                             continue
+                                        module_options = _module_test_options(row["module"])
                                         default_choice = _normalise_validation_choice(state["module_tests"].get(row["module"], "nominal"))
+                                        if default_choice not in module_options:
+                                            default_choice = "nominal" if "nominal" in module_options else next(iter(module_options))
                                         ui.markdown(f"**{row['module']}**").classes("sa-muted")
+                                        warning = _module_validation_warning(row["module"])
+                                        if warning:
+                                            ui.label(warning).classes("sa-muted text-xs")
                                         ui.select(
-                                            _module_test_options(row["module"]),
-                                            label="Evidence to inject",
+                                            module_options,
+                                            label="Telemetry to inject",
                                             value=default_choice,
                                             on_change=lambda event, name=row["module"]: update_module_test(name, str(event.value)),
                                         ).props("dense outlined").classes("w-full")
@@ -2043,8 +2151,8 @@ def main_page() -> None:
                         with ui.column().classes("sa-band p-3 w-full sa-page sa-generator-page"):
                             with ui.row().classes("w-full items-center justify-between"):
                                 with ui.column().classes("gap-0"):
-                                    ui.label("Evidence Generator").classes("text-lg font-semibold")
-                                    ui.label("Build per-module validation evidence, then inject it into a prompt check.").classes("sa-muted text-sm")
+                                    ui.label("Telemetry Editor").classes("text-lg font-semibold")
+                                    ui.label("Edit module-owned validation telemetry files. These JSON files live inside each module folder.").classes("sa-muted text-sm")
                                 ui.button("Open Validation", icon="science", on_click=lambda: tabs.set_value(prompt_developer_tab)).props("outline dense")
                             with ui.element("div").classes("sa-generator-layout w-full"):
                                 generator_modules = ui.column().classes("sa-generator-modules gap-2")
@@ -2053,59 +2161,77 @@ def main_page() -> None:
                                     with ui.row().classes("w-full gap-2"):
                                         ui.button("Validate JSON", icon="fact_check", on_click=lambda: validate_generator_payload()).props("outline dense").classes("grow")
                                         ui.button("Apply to Validation", icon="published_with_changes", on_click=lambda: apply_generator_payload()).props("outline dense").classes("grow")
-                                        ui.button("Save Payload", icon="save", on_click=lambda: save_generator_payload()).props("dense").classes("grow")
+                                        ui.button("Save Module Telemetry", icon="save", on_click=lambda: save_generator_payload()).props("dense").classes("grow")
                                     generator_save_status = ui.markdown("").classes("sa-muted text-sm sa-generator-status")
-                                    state["generator_preview"] = ui.textarea("Generated evidence payload").props("outlined spellcheck=false").classes("sa-code sa-generator-preview")
-                                    state["generator_preview"].on_value_change(lambda event: setattr(evidence_payload, "value", str(event.value or "")))
+                                    state["generator_preview"] = ui.textarea("Module telemetry JSON").props("outlined spellcheck=false").classes("sa-code sa-generator-preview")
 
                             def _current_generator_json() -> dict[str, Any] | list[Any]:
                                 raw_text = str(state["generator_preview"].value or "")
                                 parsed = json.loads(raw_text)
                                 if not isinstance(parsed, (dict, list)):
-                                    raise ValueError("Evidence payload must be a JSON object or array.")
+                                    raise ValueError("Telemetry payload must be a JSON object or array.")
                                 return parsed
+
+                            def _current_generator_selection() -> tuple[str, str, str]:
+                                detected = [row["module"] for row in _module_rows() if row["status"] == "detected"]
+                                module_name = str(state.get("generator_selected_module") or (detected[0] if detected else ""))
+                                if not module_name:
+                                    return "", "nominal", "module_default"
+                                selected = _normalise_validation_choice(state["module_tests"].get(module_name, "nominal"))
+                                options = _module_test_options(module_name)
+                                if selected not in options:
+                                    selected = "nominal" if "nominal" in options else next(iter(options))
+                                scope = _module_scope_value(module_name, state["module_scopes"])
+                                return module_name, selected, scope
+
+                            def load_generator_payload(module_name: str | None = None) -> None:
+                                if module_name:
+                                    state["generator_selected_module"] = module_name
+                                selected_module, selected_condition, selected_scope = _current_generator_selection()
+                                if not selected_module:
+                                    state["generator_preview"].value = ""
+                                    generator_save_status.content = "No module selected."
+                                    return
+                                document = _module_validation_telemetry_document(selected_module, selected_condition, selected_scope, generate_missing=True)
+                                state["generator_preview"].value = json.dumps(document, indent=2, sort_keys=False)
+                                generator_save_status.content = (
+                                    f"Editing `{_module_validation_telemetry_display_path(selected_module, selected_condition, selected_scope)}`"
+                                )
 
                             def validate_generator_payload() -> None:
                                 try:
                                     parsed = _current_generator_json()
                                 except (json.JSONDecodeError, ValueError) as exc:
                                     generator_save_status.content = f"JSON validation failed: `{exc}`"
-                                    ui.notify(f"Evidence JSON is invalid: {exc}", type="negative")
+                                    ui.notify(f"Telemetry JSON is invalid: {exc}", type="negative")
                                     return
                                 pretty = json.dumps(parsed, indent=2, sort_keys=False)
                                 state["generator_preview"].value = pretty
-                                evidence_payload.value = pretty
                                 generator_save_status.content = "JSON validation passed. Payload was formatted."
-                                ui.notify("Evidence JSON is valid.", type="positive")
+                                ui.notify("Telemetry JSON is valid.", type="positive")
 
                             def apply_generator_payload() -> None:
-                                try:
-                                    parsed = _current_generator_json()
-                                except (json.JSONDecodeError, ValueError) as exc:
-                                    generator_save_status.content = f"Cannot apply invalid JSON: `{exc}`"
-                                    ui.notify(f"Evidence JSON is invalid: {exc}", type="negative")
-                                    return
-                                pretty = json.dumps(parsed, indent=2, sort_keys=False)
-                                state["generator_preview"].value = pretty
-                                evidence_payload.value = pretty
-                                generator_save_status.content = "Applied to Validation payload."
-                                ui.notify("Applied payload to Validation.", type="positive")
+                                save_generator_payload()
+                                refresh_prompt_developer_evidence()
+                                ui.notify("Module telemetry is now used by Validation.", type="positive")
 
                             def save_generator_payload() -> None:
                                 try:
                                     parsed = _current_generator_json()
                                 except (json.JSONDecodeError, ValueError) as exc:
                                     generator_save_status.content = f"Cannot save invalid JSON: `{exc}`"
-                                    ui.notify(f"Evidence JSON is invalid: {exc}", type="negative")
+                                    ui.notify(f"Telemetry JSON is invalid: {exc}", type="negative")
                                     return
-                                OUTPUTS_ROOT.mkdir(parents=True, exist_ok=True)
-                                target = OUTPUTS_ROOT / "_evidence_generator_payload.json"
-                                pretty = json.dumps(parsed, indent=2, sort_keys=False)
-                                target.write_text(pretty, encoding="utf-8")
-                                state["generator_preview"].value = pretty
-                                evidence_payload.value = pretty
-                                generator_save_status.content = f"Saved to `{target}` and applied to Validation."
-                                ui.notify("Evidence payload saved.", type="positive")
+                                selected_module, selected_condition, selected_scope = _current_generator_selection()
+                                if not selected_module:
+                                    ui.notify("Select a module telemetry file first.", type="warning")
+                                    return
+                                target = _write_module_validation_telemetry(selected_module, selected_condition, selected_scope, parsed)
+                                document = _module_validation_telemetry_document(selected_module, selected_condition, selected_scope, generate_missing=False)
+                                state["generator_preview"].value = json.dumps(document, indent=2, sort_keys=False)
+                                refresh_prompt_developer_evidence()
+                                generator_save_status.content = f"Saved `{target.relative_to(PROJECT_ROOT)}` and applied to Validation."
+                                ui.notify("Module telemetry saved.", type="positive")
 
                             def refresh_generator_page() -> None:
                                 generator_modules.clear()
@@ -2114,17 +2240,23 @@ def main_page() -> None:
                                         if row["status"] != "detected":
                                             continue
                                         module_name = row["module"]
+                                        module_options = _module_test_options(module_name)
                                         selected = _normalise_validation_choice(state["module_tests"].get(module_name, "nominal"))
+                                        if selected not in module_options:
+                                            selected = "nominal" if "nominal" in module_options else next(iter(module_options))
                                         scope_options = _module_scope_options(module_name)
                                         selected_scope = _module_scope_value(module_name, state["module_scopes"])
                                         with ui.column().classes("sa-band p-3 gap-2 sa-generator-card"):
                                             with ui.row().classes("w-full items-center justify-between"):
                                                 ui.label(module_name).classes("font-semibold text-lg")
-                                                ui.badge("module evidence", color="primary")
-                                            ui.label("Select the evidence condition this module should contribute to the validation payload.").classes("sa-muted text-xs")
+                                                ui.badge("module telemetry", color="primary")
+                                            ui.label("Select the telemetry condition this module should contribute to the validation payload.").classes("sa-muted text-xs")
+                                            warning = _module_validation_warning(module_name)
+                                            if warning:
+                                                ui.label(warning).classes("sa-muted text-xs")
                                             ui.select(
-                                                _module_test_options(module_name),
-                                                label="Evidence condition",
+                                                module_options,
+                                                label="Telemetry condition",
                                                 value=selected,
                                                 on_change=lambda event, name=module_name: update_generator_module_choice(name, str(event.value)),
                                             ).props("dense outlined").classes("w-full")
@@ -2138,22 +2270,30 @@ def main_page() -> None:
                                             else:
                                                 ui.markdown(f"**Asset perspective:** `{next(iter(scope_options.values()))}`").classes("sa-muted text-xs")
                                             ui.markdown(
-                                                f"Current output feeds `{module_name}/...json` in the editable injector payload."
+                                                f"Editing file `{_module_validation_telemetry_display_path(module_name, selected, selected_scope)}`."
                                             ).classes("sa-muted text-xs")
+                                            ui.button(
+                                                "Edit this module telemetry",
+                                                icon="edit",
+                                                on_click=lambda name=module_name: load_generator_payload(name),
+                                            ).props("outline dense").classes("w-full")
                                 refresh_prompt_developer_evidence()
+                                load_generator_payload()
 
                             def update_generator_module_choice(module_name: str, value: str) -> None:
                                 update_module_test(module_name, value)
+                                state["generator_selected_module"] = module_name
                                 refresh_generator_page()
 
                             def update_generator_module_scope(module_name: str, value: str) -> None:
                                 update_module_scope(module_name, value)
+                                state["generator_selected_module"] = module_name
                                 refresh_generator_page()
                             refresh_generator_page()
 
                     with ui.tab_panel(evidence_tab).classes("p-0"):
                         with ui.column().classes("sa-band p-3 gap-2 w-full sa-page sa-evidence-page"):
-                            ui.label("Evidence Browser").classes("text-lg font-semibold")
+                            ui.label("Telemetry Browser").classes("text-lg font-semibold")
                             with ui.row().classes("w-full gap-3 items-end"):
                                 run_select = ui.select(_run_options(), label="Run").classes("grow")
                                 ui.button("Refresh", icon="refresh", on_click=lambda: refresh_runs())
@@ -2163,8 +2303,8 @@ def main_page() -> None:
                                     evidence_tree = ui.tree([], label_key="label", on_select=lambda event: open_evidence_from_tree(event.value)).classes("sa-band p-2 w-full sa-evidence-tree")
                                     evidence_summary = ui.markdown("").classes("sa-band p-3 w-full")
                                 with ui.column().classes("sa-evidence-right"):
-                                    ui.label("Selected Evidence").classes("font-semibold")
-                                    highlight_markdown = ui.markdown("Select an evidence file to inspect it.").classes("sa-band p-3 sa-evidence-highlight")
+                                    ui.label("Selected Telemetry").classes("font-semibold")
+                                    highlight_markdown = ui.markdown("Select a telemetry file to inspect it.").classes("sa-band p-3 sa-evidence-highlight")
                                     json_container = ui.column().classes("sa-band p-2 w-full sa-evidence-json")
 
                             def load_run() -> None:
@@ -2176,7 +2316,7 @@ def main_page() -> None:
                                 evidence_tree.update()
                                 evidence_summary.content = _evidence_empty_message(run_name)
                                 json_container.clear()
-                                highlight_markdown.content = "Select an evidence file to see relevant fields."
+                                highlight_markdown.content = "Select a telemetry file to see relevant fields."
 
                             def open_evidence(file_name: str) -> None:
                                 run_name = str(run_select.value or "")
@@ -2184,7 +2324,7 @@ def main_page() -> None:
                                     return
                                 path = OUTPUTS_ROOT / run_name / file_name
                                 display_type, data = _read_evidence_for_display(path)
-                                highlight_markdown.content = _highlight_markdown(file_name, data) if display_type == "json" else f"**Selected:** `{file_name}`\n\nText evidence file selected."
+                                highlight_markdown.content = _highlight_markdown(file_name, data) if display_type == "json" else f"**Selected:** `{file_name}`\n\nText telemetry file selected."
                                 json_container.clear()
                                 with json_container:
                                     if display_type == "json":
@@ -2505,6 +2645,48 @@ def main_page() -> None:
                                             ui.markdown(f"`{row['runner']}`").classes("sa-muted")
                                         with ui.expansion("Description", icon="info", value=False).classes("w-full"):
                                             ui.markdown(_module_description_markdown(row["module"])).classes("sa-muted text-sm")
+                                        with ui.expansion("Validation telemetry options", icon="playlist_add", value=False).classes("w-full"):
+                                            capability = _module_validation_capability(row["module"])
+                                            manifest_path = str(capability.get("manifest_path") or "")
+                                            if manifest_path:
+                                                ui.markdown(f"Manifest: `{manifest_path}`").classes("sa-muted text-sm")
+                                            else:
+                                                ui.markdown("Options are exposed by `runner.py`; no telemetry manifest JSON was found.").classes("sa-muted text-sm")
+                                            warning = _module_validation_warning(row["module"])
+                                            if warning:
+                                                ui.label(warning).classes("sa-muted text-xs")
+                                            condition_lines = [
+                                                f"- `{key}`: {value}"
+                                                for key, value in _module_test_options(row["module"]).items()
+                                            ]
+                                            scope_lines = [
+                                                f"- `{key}`: {value}"
+                                                for key, value in _module_scope_options(row["module"]).items()
+                                            ]
+                                            ui.markdown(
+                                                "**Conditions**\n\n"
+                                                + "\n".join(condition_lines)
+                                                + "\n\n**Asset perspectives**\n\n"
+                                                + "\n".join(scope_lines)
+                                            ).classes("sa-muted text-sm")
+                                            manifest_data = capability.get("manifest") or {
+                                                "validation": {
+                                                    "conditions": capability.get("conditions", {}),
+                                                    "scopes": capability.get("scopes", {}),
+                                                    "default_condition": capability.get("default_condition"),
+                                                    "default_scope": capability.get("default_scope"),
+                                                    "supports_true_positive": capability.get("supports_true_positive"),
+                                                }
+                                            }
+                                            ui.json_editor(
+                                                {
+                                                    "content": {"json": manifest_data},
+                                                    "mode": "tree",
+                                                    "readOnly": True,
+                                                    "mainMenuBar": False,
+                                                    "navigationBar": False,
+                                                }
+                                            ).classes("w-full").style("height: 260px;")
                                         if row["module"] == "dnscap":
                                             with ui.expansion("DNScap import settings", icon="dns", value=False).classes("w-full"):
                                                 ui.markdown(
@@ -2549,7 +2731,7 @@ def main_page() -> None:
 
                                                 ui.button("Save DNScap settings", icon="save", on_click=save_dnscap_from_modules).props("outline dense").classes("w-full")
                                         if row["module"] == "example_module":
-                                            ui.markdown("Disabled by default because it produces example/test evidence.").classes("sa-muted")
+                                            ui.markdown("Disabled by default because it produces example/test telemetry.").classes("sa-muted")
                                         surfaces = [
                                             surface for surface in _module_settings_surfaces(row["module"])
                                             if surface.get("kind") == "web" and row["module"] != "dnscap"

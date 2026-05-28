@@ -118,6 +118,64 @@ def _copy_work_tree(source_root: Path, work_root: Path, include_demo_intel: bool
 class Runner(BaseRunner):
     """Run ThreatSucker's explainable threat-intel correlation pipeline."""
 
+    def validation_options(self) -> dict:
+        return {
+            "conditions": {
+                "off": "Off",
+                "nominal": "Nominal: no relevant intel correlation",
+                "weak_issue": "Weak issue: relevant intel without asset match",
+                "actionable_issue": "Actionable issue: correlated phishing and vulnerability",
+            },
+            "scopes": {"module_default": "Module default"},
+            "default_condition": "actionable_issue",
+            "default_scope": "module_default",
+            "supports_true_positive": True,
+        }
+
+    def generate_validation_evidence(self, condition: str = "nominal", **_: object) -> list[dict]:
+        if condition == "off":
+            return []
+        payload: dict[str, Any] = {
+            "module": "threatsucker",
+            "provenance": {
+                "data_origin": "operator_supplied_correlation",
+                "sample_data": False,
+                "correlation_layer": True,
+            },
+            "dns_matches": [],
+            "relevant_vulnerabilities": [],
+        }
+        if condition == "actionable_issue":
+            payload["dns_matches"] = [
+                {
+                    "indicator": "login-micros0ft-security.com",
+                    "threat_type": "phishing",
+                    "priority": "critical",
+                    "matched_assets": ["office-laptop-01"],
+                }
+            ]
+            payload["relevant_vulnerabilities"] = [
+                {
+                    "cve": "CVE-2025-6554",
+                    "product": "Chrome",
+                    "affected_version": "123.0.6312.86",
+                    "matched_assets": ["office-laptop-01:chrome"],
+                    "priority": "critical",
+                }
+            ]
+        elif condition == "weak_issue":
+            payload["relevant_vulnerabilities"] = [
+                {
+                    "cve": "CVE-2025-6554",
+                    "product": "Chrome",
+                    "affected_version": "unknown",
+                    "matched_assets": [],
+                    "priority": "medium",
+                    "limitation": "Relevant exploited browser vulnerability exists, but no local affected version match is present.",
+                }
+            ]
+        return [{"filename": "threatsucker/threatsucker_correlation.json", "file_data": payload}]
+
     def run(self, output_dir: Path, module_dir: Path) -> tuple[bool, list[Path]]:
         config = load_module_runtime_config(module_dir)
         source_root = module_dir / "source"

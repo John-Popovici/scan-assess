@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "filename": "example_module/example_output.json",
+      "file_data": {
+        "module": "example_module",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false
+        },
+        "status": "no actionable findings"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "example_module",
+  "condition": "nominal",
+  "scope": "module_default"
+}

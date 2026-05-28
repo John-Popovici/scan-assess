@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "filename": "sitechecker/sitechecker.json",
+      "file_data": {
+        "module": "sitechecker",
+        "target_url": "https://eastlondonaudio.com",
+        "provenance": {
+          "data_origin": "operator_supplied_site_check",
+          "sample_data": false,
+          "owner_authorized": true,
+          "collection_method": "low_impact_http_observation"
+        },
+        "summary": {
+          "overall": "ok",
+          "finding_count": 0
+        },
+        "findings": []
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "sitechecker",
+  "condition": "nominal",
+  "scope": "module_default"
+}

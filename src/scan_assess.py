@@ -163,13 +163,13 @@ def collect_prompt_developer_payload(evidence_path: Path, output_dir: Path) -> l
     raw = json.loads(evidence_path.read_text(encoding="utf-8"))
     raw_files = raw.get("files", []) if isinstance(raw, dict) else raw
     if not isinstance(raw_files, list):
-        raise ValueError("Prompt Developer evidence must be a list or an object with a 'files' list.")
+        raise ValueError("Prompt Developer telemetry must be a list or an object with a 'files' list.")
 
     payload_files: list[dict[str, str]] = []
     for index, item in enumerate(raw_files, start=1):
         if not isinstance(item, dict):
-            raise ValueError(f"Prompt Developer evidence item {index} must be an object.")
-        filename = str(item.get("filename") or f"prompt_developer/evidence_{index}.json")
+            raise ValueError(f"Prompt Developer telemetry item {index} must be an object.")
+        filename = str(item.get("filename") or f"prompt_developer/telemetry_{index}.json")
         file_data = item.get("file_data", item.get("data", {}))
         file_text = file_data if isinstance(file_data, str) else json.dumps(file_data, indent=2, sort_keys=True)
         target = output_dir / filename
@@ -306,7 +306,7 @@ def run_assessment(options: RunOptions | None = None) -> Path | None:
         payload_files = collect_prompt_developer_payload(options.prompt_dev_evidence, output_dir)
         runner_info = [
             "run purpose: validation",
-            f"prompt developer evidence payload: {options.prompt_dev_evidence}",
+            f"prompt developer telemetry payload: {options.prompt_dev_evidence}",
         ]
     else:
         generated_json_files, runner_info, runner_errors = run_modules(MODULES_ROOT, output_dir)

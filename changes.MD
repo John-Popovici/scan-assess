@@ -2,7 +2,7 @@
 
 ## Added Project-Local Module Imports
 
-Imported new project-local versions of the non-quiz input tools from `/Users/user/codeprojects/agentic/inputs` into this repository. The original projects were left untouched.
+Imported new project-local versions of the non-quiz input tools from the local `agentic/inputs` workspace into this repository. The original projects were left untouched.
 
 ## Rust Multi-Platform Handling
 

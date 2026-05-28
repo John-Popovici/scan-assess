@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "module": "example_module",
+  "description": "Example-only validation options. This module intentionally has no high-confidence security positive.",
+  "generation": {
+    "positive_telemetry": "runner.py:Runner.generate_validation_evidence"
+  },
+  "validation": {
+    "conditions": {
+      "off": "Off",
+      "nominal": "Nominal telemetry"
+    },
+    "scopes": {
+      "module_default": "Module default"
+    },
+    "default_condition": "nominal",
+    "default_scope": "module_default",
+    "supports_true_positive": false,
+    "warning": "This example module does not expose a high-confidence positive telemetry option."
+  }
+}

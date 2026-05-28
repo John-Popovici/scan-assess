@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "filename": "safesniff/safesniff.json",
+      "file_data": {
+        "module": "safesniff",
+        "mode": "target_detection_only",
+        "provenance": {
+          "active_network_scan": false,
+          "total_tcp_connect_attempts_planned": 0
+        },
+        "asset_context": {
+          "device_scope": "observed_network",
+          "is_local_host": false,
+          "reporting_hint": "Target detection does not prove services are open."
+        },
+        "note": "Target was selected, but no TCP service scan was run."
+      }
+    }
+  ],
+  "schema_version": 1,
+  "module": "safesniff",
+  "condition": "nominal",
+  "scope": "observed_network"
+}

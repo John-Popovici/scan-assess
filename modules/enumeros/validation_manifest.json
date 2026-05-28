@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "module": "enumeros",
+  "description": "Validation telemetry options for endpoint inventory, operating system, browser, and software posture.",
+  "generation": {
+    "positive_telemetry": "runner.py:Runner.generate_validation_evidence",
+    "background_noise": "runner.py:Runner.generate_validation_noise"
+  },
+  "validation": {
+    "conditions": {
+      "off": "Off",
+      "nominal": "Nominal: current supported asset inventory",
+      "weak_issue": "Weak issue: browser patch gap",
+      "actionable_issue": "Actionable issue: unsupported OS and exposed stale browser"
+    },
+    "scopes": {
+      "local_device": "Local device inventory",
+      "observed_device": "Imported endpoint inventory"
+    },
+    "default_condition": "weak_issue",
+    "default_scope": "local_device",
+    "supports_true_positive": true
+  }
+}

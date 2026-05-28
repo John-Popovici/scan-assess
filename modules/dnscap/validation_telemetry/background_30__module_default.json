@@ -1,0 +1,1089 @@
+{
+  "schema_version": 1,
+  "module": "dnscap",
+  "condition": "background_30",
+  "scope": "module_default",
+  "purpose": "background validation telemetry",
+  "files": [
+    {
+      "filename": "dnscap/resolver_observation_01.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-01",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_02.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-02",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_03.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-03",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_04.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-04",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_05.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-05",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_06.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-06",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_07.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-07",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_08.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-08",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_09.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-09",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_10.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-10",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_11.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-11",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_12.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-12",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_13.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-13",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_14.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-14",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_15.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-15",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_16.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-16",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_17.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-17",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_18.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-18",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_19.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-19",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_20.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-20",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_21.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-21",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_22.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-22",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_23.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-23",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_24.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-24",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_25.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-25",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_26.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-26",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_27.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-27",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_28.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-28",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "bgl.lu",
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_29.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-29",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "post.lu",
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu"
+        ],
+        "suspicious_queries": []
+      }
+    },
+    {
+      "filename": "dnscap/resolver_observation_30.json",
+      "file_data": {
+        "module": "dnscap",
+        "provenance": {
+          "data_origin": "operator_supplied",
+          "sample_data": false,
+          "collection_method": "historical_dns_log_import"
+        },
+        "host": "staff-device-30",
+        "asset_context": {
+          "device_scope": "observed_non_local_device",
+          "is_local_host": false,
+          "observed_by": "office-dns-resolver-01"
+        },
+        "observed_queries": [
+          "slack.com",
+          "github.com",
+          "microsoft.com",
+          "office.com",
+          "google.com",
+          "docs.google.com",
+          "docusign.com",
+          "stripe.com",
+          "paypal.com",
+          "zoom.us",
+          "cloudflare.com",
+          "letsencrypt.org",
+          "europa.eu",
+          "guichet.public.lu",
+          "bgl.lu",
+          "post.lu"
+        ],
+        "suspicious_queries": []
+      }
+    }
+  ]
+}

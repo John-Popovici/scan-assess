@@ -50,7 +50,7 @@ def default_profile() -> LlmProfile:
         api_key_env=None,
         description="Local llama.cpp OpenAI-compatible server.",
         context_size=32768,
-        local_model_path="/Users/user/models/gguf/qwen-coder-uncensored/model.gguf",
+        local_model_path=None,
         local_server_binary="llama-server",
         local_server_host="127.0.0.1",
         local_server_port=8033,
