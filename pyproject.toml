@@ -1,7 +1,7 @@
 [project]
-name = "scan-assess"
+name = "scan-assess-gui"
 version = "0.1.0"
-description = "Add your description here"
+description = "NiceGUI workbench for scan-assess reports, validation, module controls, and LLM configuration"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
