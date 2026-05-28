@@ -1,0 +1,31 @@
+[storage]
+root = "C:\\ProgramData\\DnsLog\\logs-client-test"
+flush_interval_ms = 1000
+retention_days = 90
+
+[capture]
+interface = "\\Device\\NPF_{F543187E-5506-48A1-9D3B-18567819C297}"
+capture_udp_53 = true
+capture_tcp_53 = true
+log_queries = true
+log_responses = false
+
+[agent]
+mode = "client"
+max_queue_events = 10000
+drop_when_full = true
+health_interval_seconds = 10
+
+[client]
+collector_addr = "10.211.55.2:53530"
+# Hostname form also works when local DNS/mDNS resolves it:
+# collector_addr = "dnslog-host.local:53530"
+shared_token = "PuTYCjXMReptkPBH75mSfUAO8QOFhXUW6jbUXa/Zm9I="
+source_id = "windows-vm"
+forward_queue_events = 10000
+
+[collector]
+listen_addr = "0.0.0.0:53530"
+shared_token = "PuTYCjXMReptkPBH75mSfUAO8QOFhXUW6jbUXa/Zm9I="
+allowed_subnets = []
+max_remote_queue_events = 10000

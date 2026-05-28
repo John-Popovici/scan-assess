@@ -1,0 +1,7 @@
+microsoft.com
+office.com
+outlook.office.com
+google.com
+paypal.com
+stripe.com
+docusign.com

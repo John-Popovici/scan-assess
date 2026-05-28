@@ -5,6 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
+.DS_Store
+modules/.DS_Store
+modules/Archive.zip
+local_quarantine/
 
 # Virtual environments
 .venv

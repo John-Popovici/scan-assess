@@ -1,14 +1,41 @@
-A framework that launches multiple modules to gather data and send them to a central LLM server for analysis.
+# scan-assess
+
+A local framework that runs security collection modules, passes their JSON outputs to a local OpenAI-compatible LLM endpoint, and writes a Markdown security report.
+
+## Run The LLM Server
 
 Optionally, with llama.cpp, in one terminal:
+
 ```bash
 ./launch_llama.sh
 ```
 
-In another terminal, prepare and run the main script:
-```bash
-uv sync
-uv run main.py
+The scanner expects an OpenAI-compatible endpoint at:
+
+```text
+http://localhost:8033/v1
 ```
 
-Modules are expected to write JSON files to the `output` directory. The main script will read those files, send their contents to the LLM server, and generate a markdown report in the `reports` directory.
+## Run scan-assess
+
+Install dependencies:
+
+```bash
+uv sync
+```
+
+```bash
+uv run main.py
+uv run main.py --demo # bundled demo data
+```
+
+## Modules
+
+Reports are written to `reports/`. Module outputs are written to `outputs/`.
+
+Configuation files are located in `mondules/module_name/config/scan_assess_runtime.json` and can be used to set default arguments for each module manually as well. Arguments passed with `--set` will override these config values.
+Arguments can be set with `--set key=value` where `key` is the module name and `value` is a JSON string of the module's arguments. General arguments such as `--demo` are sent to all modules.
+
+```bash
+uv run main.py --verbose --set threatsucker.example_arg=example_value
+```

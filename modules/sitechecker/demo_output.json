@@ -1,0 +1,67 @@
+{
+  "tool": "sitechecker",
+  "mode": "owner_authorized_website_exposure_check",
+  "target_url": "https://demo-ngo.example",
+  "normalized_url": "https://demo-ngo.example",
+  "reachable": true,
+  "final_url": "https://demo-ngo.example/",
+  "status_code": 200,
+  "https": true,
+  "interesting_headers": {
+    "Server": "nginx",
+    "X-Generator": "WordPress 5.4.2"
+  },
+  "missing_headers": [
+    "Content-Security-Policy",
+    "Referrer-Policy",
+    "Permissions-Policy"
+  ],
+  "observed_components": [
+    {
+      "name": "WordPress",
+      "version": "5.4.2",
+      "source": "generator_meta",
+      "confidence": "medium"
+    },
+    {
+      "name": "jQuery",
+      "version": "1.12.4",
+      "source": "script_url",
+      "confidence": "high"
+    }
+  ],
+  "findings": [
+    {
+      "id": "missing_content_security_policy",
+      "title": "Missing Content-Security-Policy header",
+      "severity": "medium",
+      "evidence": {
+        "url": "https://demo-ngo.example/",
+        "missing_header": "Content-Security-Policy"
+      },
+      "recommendation": "Review whether Content-Security-Policy should be set for this site.",
+      "notes": ["Missing headers are hardening issues, not proof of exploitability by themselves."]
+    },
+    {
+      "id": "stale_component_jquery",
+      "title": "Legacy jQuery version observed",
+      "severity": "medium",
+      "evidence": {
+        "component": "jQuery",
+        "version": "1.12.4",
+        "minimum_supported": "3.0.0"
+      },
+      "recommendation": "Review the site theme/plugins and plan a tested upgrade path."
+    }
+  ],
+  "summary": {
+    "status": "completed",
+    "risk_score": 35,
+    "risk_level": "Medium",
+    "findings_total": 2,
+    "findings_by_severity": {
+      "medium": 2
+    },
+    "assessment_note": "Header, banner, path, and HTML-marker checks are exposure evidence and should be manually verified before claiming exploitability."
+  }
+}

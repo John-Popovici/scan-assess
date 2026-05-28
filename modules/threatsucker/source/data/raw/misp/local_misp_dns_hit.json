@@ -1,0 +1,33 @@
+{
+  "Event": {
+    "uuid": "9d6354a0-7c47-4c17-8d10-localmisptest",
+    "info": "Credential phishing campaign targeting Luxembourg NGOs using Microsoft 365 login theme",
+    "timestamp": "1778432400",
+    "Tag": [
+      {"name": "tlp:white"},
+      {"name": "type:OSINT"},
+      {"name": "phishing"},
+      {"name": "Luxembourg"}
+    ],
+    "Attribute": [
+      {
+        "uuid": "local-test-domain-1",
+        "category": "Network activity",
+        "type": "domain",
+        "value": "login-example-ngo-support.lu",
+        "comment": "Local test MISP indicator for DNS correlation",
+        "to_ids": true,
+        "timestamp": "1778432400"
+      },
+      {
+        "uuid": "local-test-url-1",
+        "category": "Network activity",
+        "type": "url",
+        "value": "https://login-example-ngo-support.lu/microsoft365/session",
+        "comment": "Local test MISP phishing URL imitating Microsoft 365 login",
+        "to_ids": true,
+        "timestamp": "1778432400"
+      }
+    ]
+  }
+}

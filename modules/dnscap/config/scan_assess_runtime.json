@@ -1,0 +1,8 @@
+{
+  "demo": false,
+  "demo_log_root": "imported_logs",
+  "log_root": "sample_logs",
+  "period": "all",
+  "update_last_run_marker": false,
+  "use_last_run_marker": false
+}
