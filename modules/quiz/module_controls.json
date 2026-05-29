@@ -1,0 +1,15 @@
+{
+  "settings_surfaces": [
+    {
+      "kind": "web",
+      "label": "Quiz controls",
+      "detail": "Run the standalone quiz app from the scan-assess wrapper and produce quiz telemetry that can be copied into scan-assess runs.",
+      "command": "cd modules/quiz/scan-assess-quiz && uv run main.py --host 127.0.0.1 --port 8785",
+      "cwd": "modules/quiz/scan-assess-quiz",
+      "argv": "uv run main.py --host 127.0.0.1 --port 8785",
+      "host": "127.0.0.1",
+      "port": "8785",
+      "url": "http://127.0.0.1:8785"
+    }
+  ]
+}
