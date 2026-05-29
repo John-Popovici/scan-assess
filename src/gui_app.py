@@ -167,6 +167,32 @@ def _module_settings_surfaces(module_name: str) -> list[dict[str, str]]:
     source_dir = module_dir / "source"
     surfaces: list[dict[str, str]] = []
 
+    for manifest_path in [
+        module_dir / "module_controls.json",
+        module_dir / "settings_surfaces.json",
+        source_dir / "module_controls.json",
+        source_dir / "settings_surfaces.json",
+    ]:
+        if not manifest_path.exists():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        raw_surfaces = manifest.get("settings_surfaces", manifest) if isinstance(manifest, dict) else manifest
+        if not isinstance(raw_surfaces, list):
+            continue
+        for raw_surface in raw_surfaces:
+            if not isinstance(raw_surface, dict):
+                continue
+            surface = {str(key): str(value) for key, value in raw_surface.items() if value is not None}
+            surface.setdefault("kind", "web")
+            surface.setdefault("label", f"{module_name} controls")
+            surface.setdefault("detail", f"Control surface declared by `{manifest_path.relative_to(PROJECT_ROOT)}`.")
+            surface.setdefault("command", "")
+            surface.setdefault("url", "")
+            surfaces.append(surface)
+
     web_doc = source_dir / "docs" / "WEB_UI.md"
     web_py_candidates = [source_dir / "web.py", source_dir / "src" / "ngo_intel" / "web.py"]
     has_web_py = any(path.exists() for path in web_py_candidates)
@@ -2660,6 +2686,47 @@ def main_page() -> None:
                                             ui.markdown(f"`{row['runner']}`").classes("sa-muted")
                                         with ui.expansion("Description", icon="info", value=False).classes("w-full"):
                                             ui.markdown(_module_description_markdown(row["module"])).classes("sa-muted text-sm")
+                                        surfaces = [
+                                            surface for surface in _module_settings_surfaces(row["module"])
+                                            if surface.get("kind") == "web" and row["module"] != "dnscap"
+                                        ]
+                                        if surfaces:
+                                            with ui.expansion("Module controls", icon="settings", value=row["module"] == "quiz").classes("w-full"):
+                                                for surface in surfaces:
+                                                    with ui.column().classes("sa-band p-2 gap-1 w-full"):
+                                                        ui.markdown(f"**{surface['label']}**").classes("sa-muted")
+                                                        ui.markdown(surface["detail"]).classes("sa-muted text-sm")
+                                                        if surface.get("command"):
+                                                            ui.markdown(f"`{surface['command']}`").classes("sa-muted")
+                                                        if surface.get("url"):
+                                                            status = ui.markdown(settings_status_text(surface)).classes("sa-muted text-sm")
+                                                            with ui.dialog().props("persistent") as controls_dialog:
+                                                                with ui.card().classes("sa-controls-dialog-card"):
+                                                                    with ui.row().classes("w-full items-center justify-between gap-2"):
+                                                                        with ui.column().classes("gap-0"):
+                                                                            ui.label(surface["label"]).classes("font-semibold")
+                                                                            ui.label(surface["url"]).classes("sa-muted text-xs")
+                                                                        with ui.row().classes("gap-2"):
+                                                                            ui.link("Open in browser tab", surface["url"], new_tab=True).classes("sa-context-button")
+                                                                            ui.button("Close", icon="close", on_click=controls_dialog.close).props("outline dense")
+                                                                    html.iframe(src=surface["url"], title="Module controls").classes("sa-controls-frame")
+                                                            with ui.row().classes("w-full gap-2"):
+                                                                ui.button(
+                                                                    "Start controls",
+                                                                    icon="play_arrow",
+                                                                    on_click=lambda s=surface, st=status: start_settings_surface(s, st),
+                                                                ).props("outline dense").classes("grow")
+                                                                ui.button(
+                                                                    "Open here",
+                                                                    icon="open_in_full",
+                                                                    on_click=lambda s=surface, st=status, dlg=controls_dialog: open_settings_surface(s, st, dlg),
+                                                                ).props("outline dense").classes("grow")
+                                                                ui.link("Open controls", surface["url"], new_tab=True).classes("sa-context-button grow")
+                                                                ui.button(
+                                                                    "Stop",
+                                                                    icon="stop",
+                                                                    on_click=lambda s=surface, st=status: stop_settings_surface(s, st),
+                                                                ).props("outline dense color=negative").classes("grow")
                                         with ui.expansion("Validation telemetry options", icon="playlist_add", value=False).classes("w-full"):
                                             capability = _module_validation_capability(row["module"])
                                             manifest_path = str(capability.get("manifest_path") or "")
@@ -2747,47 +2814,6 @@ def main_page() -> None:
                                                 ui.button("Save DNScap settings", icon="save", on_click=save_dnscap_from_modules).props("outline dense").classes("w-full")
                                         if row["module"] == "example_module":
                                             ui.markdown("Disabled by default because it produces example/test telemetry.").classes("sa-muted")
-                                        surfaces = [
-                                            surface for surface in _module_settings_surfaces(row["module"])
-                                            if surface.get("kind") == "web" and row["module"] != "dnscap"
-                                        ]
-                                        if surfaces:
-                                            with ui.expansion("Module controls", icon="settings", value=False).classes("w-full"):
-                                                for surface in surfaces:
-                                                    with ui.column().classes("sa-band p-2 gap-1 w-full"):
-                                                        ui.markdown(f"**{surface['label']}**").classes("sa-muted")
-                                                        ui.markdown(surface["detail"]).classes("sa-muted text-sm")
-                                                        if surface.get("command"):
-                                                            ui.markdown(f"`{surface['command']}`").classes("sa-muted")
-                                                        if surface.get("url"):
-                                                            status = ui.markdown(settings_status_text(surface)).classes("sa-muted text-sm")
-                                                            with ui.dialog().props("persistent") as controls_dialog:
-                                                                with ui.card().classes("sa-controls-dialog-card"):
-                                                                    with ui.row().classes("w-full items-center justify-between gap-2"):
-                                                                        with ui.column().classes("gap-0"):
-                                                                            ui.label(surface["label"]).classes("font-semibold")
-                                                                            ui.label(surface["url"]).classes("sa-muted text-xs")
-                                                                        with ui.row().classes("gap-2"):
-                                                                            ui.link("Open in browser tab", surface["url"], new_tab=True).classes("sa-context-button")
-                                                                            ui.button("Close", icon="close", on_click=controls_dialog.close).props("outline dense")
-                                                                    html.iframe(src=surface["url"], title="Module controls").classes("sa-controls-frame")
-                                                            with ui.row().classes("w-full gap-2"):
-                                                                ui.button(
-                                                                    "Start controls",
-                                                                    icon="play_arrow",
-                                                                    on_click=lambda s=surface, st=status: start_settings_surface(s, st),
-                                                                ).props("outline dense").classes("grow")
-                                                                ui.button(
-                                                                    "Open here",
-                                                                    icon="open_in_full",
-                                                                    on_click=lambda s=surface, st=status, dlg=controls_dialog: open_settings_surface(s, st, dlg),
-                                                                ).props("outline dense").classes("grow")
-                                                                ui.link("Open controls", surface["url"], new_tab=True).classes("sa-context-button grow")
-                                                                ui.button(
-                                                                    "Stop",
-                                                                    icon="stop",
-                                                                    on_click=lambda s=surface, st=status: stop_settings_surface(s, st),
-                                                                ).props("outline dense color=negative").classes("grow")
 
 
 ui.run(

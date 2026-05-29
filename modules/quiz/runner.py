@@ -37,7 +37,13 @@ class Runner(BaseRunner):
 
 		copied_report = output_dir / latest_report.name
 		shutil.copy2(latest_report, copied_report)
-		return True, [copied_report]
+		copied_files = [copied_report]
+		json_report = latest_report.with_suffix(".json")
+		if json_report.exists():
+			copied_json = output_dir / json_report.name
+			shutil.copy2(json_report, copied_json)
+			copied_files.append(copied_json)
+		return True, copied_files
 
 	def _find_latest_report(self, reports_dir: Path) -> Path | None:
 		"""Return the newest markdown report in the quiz reports directory."""
